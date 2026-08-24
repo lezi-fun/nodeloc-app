@@ -37,6 +37,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.nodeloc.data.DiscourseApi
+import app.nodeloc.util.absoluteUrl
 import coil.compose.AsyncImage
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -48,7 +50,8 @@ private val EmojiBox = 20.dp
 /** Discourse cooked HTML → Compose 富文本(emoji 内联 / 图片 / 链接 / 引用 / 代码 / 列表) */
 @Composable
 fun CookedText(html: String, modifier: Modifier = Modifier) {
-    val body = remember(html) { Jsoup.parseBodyFragment(html).body() }
+    // 带上 baseUri,否则 Jsoup 的 absUrl() 对站内相对链接一律返回空串
+    val body = remember(html) { Jsoup.parseBodyFragment(html, DiscourseApi.BASE).body() }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         body.childNodes().forEach { RenderBlock(it) }
     }
@@ -162,7 +165,7 @@ private fun BlockImage(node: Element) {
 private fun LinkBlock(node: Element) {
     val nc = MaterialTheme.colorScheme
     val ctx = LocalContext.current
-    val href = node.absUrl("href").ifBlank { node.attr("href") }
+    val href = node.absUrl("href").ifBlank { resolveUrl(node.attr("href")).orEmpty() }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -218,8 +221,5 @@ private fun CodeBlock(node: Element) {
     )
 }
 
-private fun resolveUrl(src: String): String? {
-    if (src.isBlank()) return null
-    if (src.startsWith("http")) return src
-    return app.nodeloc.data.DiscourseApi.BASE + src
-}
+private fun resolveUrl(src: String): String? =
+    absoluteUrl(src, DiscourseApi.BASE)

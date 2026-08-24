@@ -60,6 +60,7 @@ import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.CookedText
 import app.nodeloc.ui.components.LoadingMark
 import app.nodeloc.ui.theme.LocalNodelocColors
+import app.nodeloc.util.hexColor
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -187,10 +188,10 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
         }
 
         var catName by remember(args.id) { mutableStateOf<String?>(null) }
-        var catColor by remember(args.id) { mutableStateOf("#0088CC") }
-        LaunchedEffect(args.categoryId) { SiteRepo.category(args.categoryId)?.let { catName = it.name; catColor = "#" + it.color } }
+        var catColor by remember(args.id) { mutableStateOf("0088CC") }
+        LaunchedEffect(args.categoryId) { SiteRepo.category(args.categoryId)?.let { catName = it.name; catColor = it.color } }
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(8.dp).background(Color(android.graphics.Color.parseColor(catColor)), CircleShape))
+            Box(Modifier.size(8.dp).background(hexColor(catColor), CircleShape))
             Spacer(Modifier.width(6.dp)); Text(catName ?: "", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
             Spacer(Modifier.width(12.dp))
             (state as? DetailState.Ready)?.detail?.let { detail -> Text((detail.postsCount - 1).coerceAtLeast(0).toString() + " 回复 · " + detail.views + " 浏览",
@@ -252,9 +253,9 @@ private fun PostItem(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(post.username, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = nc.onBackground)
-                    if (post.username.equals("James", ignoreCase = true)) {
+                    post.staffBadge?.let { badge ->
                         Spacer(Modifier.width(7.dp)); Box(Modifier.background(nc.adminBadge, RoundedCornerShape(5.dp)).padding(horizontal = 6.dp, vertical = 1.5.dp)) {
-                            Text("ADMIN", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = if (nc.background.luminance() > 0.5f) Color.White else Color(0xFF12100D))
+                            Text(badge, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = if (nc.background.luminance() > 0.5f) Color.White else Color(0xFF12100D))
                         }
                     }
                     Spacer(Modifier.weight(1f)); Text(SiteRepo.relativeTime(post.createdAt), style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant)

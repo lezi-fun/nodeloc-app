@@ -20,12 +20,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Reply
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
@@ -226,7 +225,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
                     shape = RoundedCornerShape(21.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = nc.outlineVariant, focusedBorderColor = nc.primary),
                     modifier = Modifier.weight(1f).heightIn(min = 42.dp))
                 Spacer(Modifier.width(10.dp)); FilledIconButton(onClick = {}, shape = CircleShape,
-                    colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(containerColor = nc.primary, contentColor = nc.onPrimary)) { Icon(Icons.Filled.Send, null) }
+                    colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(containerColor = nc.primary, contentColor = nc.onPrimary)) { Icon(Icons.AutoMirrored.Filled.Send, null) }
             }
         }
     }
@@ -264,7 +263,7 @@ private fun PostItem(
                 post.replyToPostNumber?.let { target ->
                     Surface(onClick = onToggleHistory, shape = RoundedCornerShape(8.dp), color = nc.secondaryContainer.copy(alpha = 0.7f), modifier = Modifier.padding(top = 7.dp)) {
                         Row(Modifier.padding(horizontal = 8.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Reply, null, tint = nc.primary, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(5.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = nc.primary, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(5.dp))
                             Text("回复 " + (post.replyToUser?.username?.takeIf { it.isNotBlank() } ?: "#" + target), style = MaterialTheme.typography.labelMedium, color = nc.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             if (historyLoading) { Spacer(Modifier.width(6.dp)); CircularProgressIndicator(color = nc.primary, strokeWidth = 1.5.dp, modifier = Modifier.size(12.dp)) }
                         }
@@ -288,7 +287,7 @@ private fun PostItem(
                 if (!nested && post.replyCount > 0) {
                     val expanded = children != null
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 5.dp)) {
-                        TextButton(onClick = onToggleChildren) { Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(3.dp)); Text(if (expanded) "收起回复" else "查看 " + post.replyCount + " 条回复", color = nc.primary) }
+                        TextButton(onClick = onToggleChildren) { Icon(if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(3.dp)); Text(if (expanded) "收起回复" else "查看 " + post.replyCount + " 条回复", color = nc.primary) }
                         if (expanded && children.orEmpty().size < post.replyCount) TextButton(onClick = onLoadMoreChildren, enabled = !childrenLoading) { Text(if (childrenLoading) "加载中…" else "加载更多", color = nc.primary) }
                     }
                 }

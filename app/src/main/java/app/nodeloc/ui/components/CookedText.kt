@@ -85,7 +85,7 @@ private fun RenderBlock(node: Node) {
                 Text(node.text(), style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, color = nc.onBackground)
             "br" -> {}
-            else -> if (node.childNodeSize() > 0 || node.textContent().isNotBlank()) InlineFlow(node)
+            else -> if (node.childNodeSize() > 0 || node.text().isNotBlank()) InlineFlow(node)
         }
     }
 }
@@ -104,7 +104,7 @@ private fun InlineFlow(element: Element) {
                             fontWeight = if (bold) FontWeight.Bold else null,
                             fontStyle = if (italic) FontStyle.Italic else null,
                             fontFamily = if (mono) FontFamily.Monospace else null,
-                            color = link?.let { Color(0xFF009966) },
+                            color = if (link != null) Color(0xFF009966.toInt()) else Color.Unspecified,
                             textDecoration = link?.let { TextDecoration.Underline },
                         )) { append(n.text()) }
                     }

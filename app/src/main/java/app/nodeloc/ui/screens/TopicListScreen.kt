@@ -1,5 +1,6 @@
 package app.nodeloc.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +42,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,7 +51,9 @@ import app.nodeloc.data.SiteRepo
 import app.nodeloc.data.model.CategoryDto
 import app.nodeloc.data.model.TopicDto
 import app.nodeloc.data.model.UserDto
+import app.nodeloc.R
 import app.nodeloc.ui.components.Avatar
+import app.nodeloc.ui.components.DrawLoading
 import app.nodeloc.ui.theme.LocalNodelocColors
 import kotlinx.coroutines.launch
 
@@ -117,12 +121,10 @@ fun TopicListScreen(onOpenTopic: (TopicDto) -> Unit) {
             Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                "NodeLoc",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = nc.onBackground,
-                modifier = Modifier.weight(1f),
+            Image(
+                painter = painterResource(R.drawable.nodeloc_logo),
+                contentDescription = "NodeLoc",
+                modifier = Modifier.weight(1f).height(18.dp),
             )
             IconButton(onClick = {}) { Icon(Icons.Filled.Search, null, tint = nc.onSurfaceVariant) }
             IconButton(onClick = {}) { Icon(Icons.Filled.Notifications, null, tint = nc.onSurfaceVariant) }
@@ -130,7 +132,7 @@ fun TopicListScreen(onOpenTopic: (TopicDto) -> Unit) {
 
         when (val s = state) {
             is ListState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = nc.primary)
+                DrawLoading()
             }
             is ListState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -202,7 +204,7 @@ private fun TopicRow(t: TopicDto, op: UserDto?, cat: CategoryDto?, onClick: () -
                         Text(c.name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
                         Spacer(Modifier.width(10.dp))
                     }
-                    Text(t.postsCount.toString() + " 回复", style = MaterialTheme.typography.labelMedium, color = nc.onSurfaceVariant)
+                    Text((t.postsCount - 1).coerceAtLeast(0).toString() + " 回复", style = MaterialTheme.typography.labelMedium, color = nc.onSurfaceVariant)
                     Spacer(Modifier.weight(1f))
                     Text(SiteRepo.relativeTime(t.bumpedAt), style = MaterialTheme.typography.labelMedium, color = nc.onSurfaceVariant)
                 }

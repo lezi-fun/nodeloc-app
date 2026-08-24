@@ -50,11 +50,17 @@ jobs:
           chmod +x ./gradlew
           ./gradlew assembleRelease --stacktrace
 
-      - name: Stage APK with short-hash filename
+      - name: Stage APK artifacts (per-ABI + universal)
         if: steps.guard.outputs.present == 'true'
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/release/*.apk "dist/nodeloc-${{ steps.sha.outputs.short }}.apk"
+          short="${{ steps.sha.outputs.short }}"
+          for f in app/build/outputs/apk/release/*.apk; do
+            base=$(basename "$f")
+            abi=$(echo "$base" | sed -E 's/^app-(.+)-release\.apk$/\1/')
+            cp "$f" "dist/nodeloc-${abi}-${short}.apk"
+          done
+          ls -la dist/
 
       - name: Publish GitHub Release (title = short commit)
         if: steps.guard.outputs.present == 'true'
@@ -66,5 +72,5 @@ jobs:
             --title "${{ steps.sha.outputs.short }}" \
             --notes "自动构建 · commit ${{ github.sha }}" \
             --target "${{ github.sha }}" \
-            "dist/nodeloc-${{ steps.sha.outputs.short }}.apk" \
-          || gh release upload "$TAG" "dist/nodeloc-${{ steps.sha.outputs.short }}.apk" --clobber
+            dist/*.apk \
+          || gh release upload "$TAG" dist/*.apk --clobber

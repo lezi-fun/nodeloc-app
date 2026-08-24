@@ -52,6 +52,7 @@ import app.nodeloc.data.model.PostDto
 import app.nodeloc.data.model.TopicDetailDto
 import app.nodeloc.ui.DetailArgs
 import app.nodeloc.ui.components.Avatar
+import app.nodeloc.ui.components.DrawLoading
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.cookedToText
 
@@ -122,7 +123,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
         // ── 楼层流 ──
         when (val s = state) {
             is DetailState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = nc.primary)
+                DrawLoading()
             }
             is DetailState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

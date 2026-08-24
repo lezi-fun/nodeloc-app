@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NodeLoc App 设计画布 · 三向切换</title>
+<title>NodeLoc App 设计画布 · 屏内三主题切换</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -18,17 +18,6 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
 .sys span{font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:999px;background:#fff;color:#454138;border:1px solid #dcd7cc}
 .sys b{color:#009966}
 
-/* 切换器 */
-.switcher{display:flex;justify-content:center;gap:10px;margin:26px 0 22px;flex-wrap:wrap}
-.swbtn{display:inline-flex;align-items:center;gap:9px;padding:12px 20px;border-radius:999px;border:2px solid #d5cfc3;
-       background:#fff;font:inherit;font-size:14px;font-weight:700;color:#454138;cursor:pointer;
-       transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
-.swbtn i{width:11px;height:11px;border-radius:50%;display:inline-block}
-.swbtn:hover{transform:translateY(-2px)}
-.swbtn.on{border-color:#222;color:#111;box-shadow:0 6px 18px -6px rgba(30,26,21,.35)}
-.kbd{font-size:10px;font-weight:800;background:#efece4;border:1px solid #d5cfc3;border-radius:5px;padding:1px 6px;margin-left:2px}
-
-/* 舞台 */
 .stage-wrap{display:flex;gap:44px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:1000px;margin:0 auto}
 .stage{width:392px;flex:none}
 .screen{position:relative;width:392px;height:824px;border-radius:44px;overflow:hidden;
@@ -50,45 +39,60 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
 
 /* ===== 手机内部共享结构 ===== */
 .app{position:absolute;inset:0;display:flex;flex-direction:column}
-.sbar{height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:12.5px;font-weight:700;flex:none}
-.abar{height:58px;display:flex;align-items:center;gap:12px;padding:0 18px;flex:none;z-index:50}
+.sbar{height:36px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:12.5px;font-weight:700;flex:none}
+.sbar .sicons{display:inline-flex;align-items:center;gap:6px}
+.abar{height:56px;display:flex;align-items:center;gap:12px;padding:0 18px;flex:none;z-index:50}
 .abar .logo{height:21px;display:block}
 .abar .grow{flex:1}
 .iconbtn{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .me{position:relative;width:36px;height:36px;border-radius:50%}
 .me img{width:100%;height:100%;border-radius:50%;display:block;object-fit:cover}
-.chips{display:flex;gap:8px;padding:10px 16px 12px;overflow:hidden;flex:none}
+
+/* 屏内主题切换器 */
+.tsw{margin:10px 16px 2px;height:40px;flex:none;display:flex;align-items:center;gap:4px;
+     border-radius:999px;padding:4px;cursor:default}
+.tsw button{flex:1;height:32px;border:none;border-radius:999px;background:transparent;font:inherit;
+     font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+     cursor:pointer;color:inherit;opacity:.62;transition:background .15s,opacity .15s;white-space:nowrap;min-width:0;padding:0 6px}
+.tsw button i{width:9px;height:9px;border-radius:50%;flex:none}
+.tsw button.on{opacity:1}
+
+.chips{display:flex;gap:8px;padding:8px 16px 10px;overflow:hidden;flex:none}
 .chip{flex:none;height:36px;padding:0 13px;border-radius:999px;display:inline-flex;align-items:center;gap:7px;
       font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer}
-.chip .dot{width:8px;height:8px;border-radius:50%}
-.list{flex:1;overflow:hidden;padding:2px 14px 8px;display:flex;flex-direction:column;gap:9px}
-.row{border-radius:16px;padding:12px 14px;display:flex;gap:12px;min-height:74px;cursor:pointer}
+.chip .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.list{flex:1;overflow:hidden;padding:0 14px 8px;display:flex;flex-direction:column;gap:9px}
+.row{border-radius:16px;padding:12px 14px;display:flex;gap:12px;min-height:72px;cursor:pointer;overflow:hidden}
 .avwrap{width:44px;height:44px;flex:none}
 .av,.la{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block}
 .la{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
-.rmain{flex:1;min-width:0}
-.rtitle{font-size:15px;font-weight:600;line-height:1.38;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty}
-.rmeta{display:flex;align-items:center;gap:11px;margin-top:7px;font-size:12px;font-weight:500}
-.rmeta .cat{display:inline-flex;align-items:center;gap:5px;font-weight:700}
-.rmeta .cat i{width:8px;height:8px;border-radius:50%}
-.rmeta .m{display:inline-flex;align-items:center;gap:4px}
-.pin{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:.05em;margin-right:6px;vertical-align:2px}
+.rmain{flex:1;min-width:0;overflow:hidden}
+.rtitle{font-size:15px;font-weight:600;line-height:1.38;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+        overflow:hidden;text-wrap:pretty;word-break:break-word}
+.rmeta{display:flex;align-items:center;gap:9px;margin-top:7px;font-size:11.5px;font-weight:500;
+       overflow:hidden;white-space:nowrap}
+.rmeta .cat{display:inline-flex;align-items:center;gap:5px;font-weight:700;flex:none}
+.rmeta .cat i{width:8px;height:8px;border-radius:50%;flex:none}
+.rmeta .m{display:inline-flex;align-items:center;gap:4px;flex:none}
+.rmeta .ago{margin-left:auto;flex:none;padding-left:4px}
 .hotf{color:#F1592A;font-weight:800}
-.floor{margin:2px 14px 10px;border-radius:16px;padding:12px 14px;flex:none}
-.floor .fh{display:flex;align-items:center;gap:11px}
+.floor{margin:2px 14px 10px;border-radius:16px;padding:12px 14px;flex:none;overflow:hidden}
+.floor .fh{display:flex;align-items:center;gap:11px;min-width:0}
 .floor .fav{position:relative;width:42px;height:42px;flex:none}
 .floor .fav img,.floor .fav .la{width:42px;height:42px;border-radius:50%}
-.floor .fn{font-size:13.5px;font-weight:700}
+.floor .fwho{min-width:0;flex:1}
+.floor .fn{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .floor .fs{font-size:11.5px;margin-top:2px;font-weight:500}
-.gifbadge{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:.06em;padding:4px 9px;border-radius:999px;flex:none}
+.gifbadge{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:.06em;
+          padding:4px 9px;border-radius:999px}
 .floor p{font-size:13px;line-height:1.6;margin-top:9px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty}
 @keyframes gifring{to{transform:rotate(360deg)}}
 .gifring{position:absolute;inset:-4px;border-radius:50%;pointer-events:none}
-.nav{height:78px;display:flex;align-items:flex-start;padding-top:9px;flex:none}
+.nav{height:76px;display:flex;align-items:flex-start;padding-top:9px;flex:none}
 .nv{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;cursor:pointer}
 .nvpill{width:56px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center}
-.fab{position:absolute;right:18px;bottom:96px;width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 24px -6px rgba(0,153,102,.5)}
-.fabc{position:absolute;left:50%;bottom:88px;transform:translateX(-50%);width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.fab{position:absolute;right:18px;bottom:94px;width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 24px -6px rgba(0,153,102,.5)}
+.fabc{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
 
 /* ===== A 原生 Material ===== */
 .dir-a .screen{background:#fff}
@@ -96,6 +100,8 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
 .dir-a .abar{background:#fff;border-bottom:1px solid #eceef0}
 .dir-a .iconbtn{color:#45494d}
 .dir-a .me{box-shadow:0 0 0 2px #fff,0 0 0 4px #00996633}
+.dir-a .tsw{background:#f1f3f2}
+.dir-a .tsw button.on{background:#fff;color:#007a52;box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .dir-a .chip{background:#f3f4f6;color:#5c6166}
 .dir-a .chip.on{background:#e2f3ec;color:#007a52}
 .dir-a .row{background:#f8f9fa}
@@ -120,9 +126,11 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
 .dir-b .iconbtn{color:#b9ac99}
 .dir-b .me{animation:pulseB 3s ease-in-out infinite}
 @keyframes pulseB{0%,100%{box-shadow:0 0 0 2px #12100d,0 0 10px 2px rgba(245,191,3,.35)}50%{box-shadow:0 0 0 2px #12100d,0 0 20px 5px rgba(245,191,3,.6)}}
+.dir-b .tsw{background:#2a241d}
+.dir-b .tsw button.on{background:#3a332a;color:#3ecf82}
 .dir-b .chip{background:#2a241d;color:#b3a793}
 .dir-b .chip.on{background:#12331f;color:#3ecf82}
-.dir-b .row{background:#272119;border:1px solid #372f24;min-height:70px;padding:11px 13px}
+.dir-b .row{background:#272119;border:1px solid #372f24;min-height:68px;padding:11px 13px}
 .dir-b .rtitle{color:#e8e0d2}
 .dir-b .rmeta{color:#a39684}
 .dir-b .pin{background:#F1592A;color:#fff}
@@ -142,6 +150,9 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
 .dir-c .abar .logo{height:26px}
 .dir-c .iconbtn{color:#223029;border:2px solid #223029;background:#fff}
 .dir-c .me{box-shadow:0 0 0 2px #faf5ec,0 0 0 4px #223029}
+.dir-c .tsw{background:#fff;border:2px solid #223029;border-radius:14px}
+.dir-c .tsw button{border-radius:10px}
+.dir-c .tsw button.on{background:#FF9933;color:#223029;box-shadow:2px 2px 0 #223029}
 .dir-c .chip{background:#fff;border:2px solid #223029;color:#223029;border-radius:12px}
 .dir-c .chip.on{background:#009966;border-color:#223029;color:#fff}
 .dir-c .chip:not(.on) .dot{outline:2px solid #223029;outline-offset:-2px}
@@ -163,15 +174,13 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
 
 <header class="intro">
   <h1>NodeLoc App · <em>首页话题流</em> 设计画布</h1>
-  <p>同一份真实内容(线上 latest.json 抓取),三种视觉方向一键切换。色值与字体取自站点真实 CSS token。</p>
+  <p>同一份真实内容(线上 latest.json 抓取)。三个主题已内置到手机内部——用屏内「外观」分段控件或键盘 1/2/3 切换。</p>
   <div class="sys">
     <span>品牌绿 <b>#009966</b>/暗<b>#118a53</b></span><span>辅橙 <b>#FF9933</b></span>
     <span>暖夜底 <b>#1e1a15</b></span><span><b>Montserrat</b>+PingFang SC</span>
     <span>触达 ≥44dp</span><span>详情页 <b>GIF 头像</b>原样循环</span><span>管理员金晕 · 版主青晕</span>
   </div>
 </header>
-
-<div class="switcher" id="switcher"></div>
 
 <div class="stage-wrap">
   <div class="stage"><div class="screen dir-a" id="screen"></div></div>
@@ -180,13 +189,13 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
     <h2 id="s-title"></h2>
     <p id="s-pitch"></p>
     <ul id="s-notes"></ul>
-    <div class="hint">快捷键:1 / 2 / 3 或 ← → 切换 · 选择会被记住</div>
+    <div class="hint">屏内「外观」控件可切换主题 · 键盘 1/2/3 或 ← → 同样有效 · 选择会被记住</div>
   </aside>
 </div>
 
 <footer class="pick">
   选定后回复方向名(或混搭要求，例如「B 的暖夜底 + C 的描边卡片」)，我将其落地为 Jetpack Compose 的
-  ColorScheme / Type / Shape 三件套并实现首屏。
+  ColorScheme / Type / Shape 三件套并实现首屏。这个屏内切换器的交互形态本身也可以直接复刻进 App 的设置页。
   <br><small style="color:#8a857b">头像规则：列表页取静帧；帖子详情页允许 GIF 动图头像原样循环播放——楼层预览中的旋转环即为播放态提示。</small>
 </footer>
 
@@ -203,27 +212,30 @@ const ICONS={
  eye:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
  flame:'<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 4-3 5-3 9a3 3 0 0 0 6 0c0-1.5-.8-2.4-.8-2.4S17 10 17 14a5 5 0 0 1-10 0C7 8 13 7 12 2z"/></svg>',
  pin:'<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3l5 5-6 2-4 7-2-2-5 6 6-5-2-2 7-4z"/></svg>',
- gifplay:'<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
+ gifplay:'<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+ sig:'<svg width="17" height="12" viewBox="0 0 20 14" fill="currentColor"><rect x="0" y="8" width="3" height="6" rx="1"/><rect x="5" y="5.5" width="3" height="8.5" rx="1"/><rect x="10" y="3" width="3" height="11" rx="1"/><rect x="15" y="0.5" width="3" height="13.5" rx="1" opacity=".35"/></svg>',
+ wifi:'<svg width="17" height="13" viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 6.5a15 15 0 0 1 20 0"/><path d="M5.5 10.5a10 10 0 0 1 13 0"/><path d="M9 14.2a5 5 0 0 1 6 0"/><circle cx="12" cy="16.6" r="1.4" fill="currentColor" stroke="none"/></svg>',
+ batt:'<svg width="23" height="12" viewBox="0 0 27 13" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="21" height="11" rx="3"/><rect x="3.2" y="3.2" width="13" height="6.6" rx="1.6" fill="currentColor" stroke="none"/><path d="M24.5 4.5v4a2.2 2.2 0 0 0 0-4z" fill="currentColor" stroke="none"/></svg>'
 };
 
 const ROWS=[
- {t:"商家推广信息请统一发到推广节点",cat:"公告",cc:"#F1592A",pin:1,p:29,l:41,v:680,u:"daryenr",av:"assets/avatar-daryenr.png",ago:"59 分钟"},
+ {t:"商家推广信息请统一发到推广节点",cat:"公告",cc:"#F1592A",pin:1,p:29,v:680,u:"daryenr",av:"assets/avatar-daryenr.png",ago:"59 分钟"},
  {t:"RemakeFace Pro高级版逆向Web支持9款生图模型，支持API调用开箱即用",cat:"AI",cc:"#0088CC",u:"shf_huang",ago:"7 分钟"},
- {t:"新一轮的12个月学生优惠gemini pro又又来了",cat:"羊毛党",cc:"#0088CC",hot:1,p:61,l:16,v:801,u:"153526739",ago:"8 分钟"},
+ {t:"新一轮的12个月学生优惠gemini pro又又来了",cat:"羊毛党",cc:"#0088CC",hot:1,p:61,v:801,u:"153526739",ago:"8 分钟"},
  {t:"anyns.io 免费权威 DNS 入驻 NL：分线解析、自定义线路、CF 加速、DDNS、API",cat:"推广",cc:"#921665",u:"yuqi9",ago:"8 分钟"},
  {t:"搞了一个月的家宽，不知道可以干嘛用？",cat:"杂谈",cc:"#FFA500",u:"cc1359",ago:"9 分钟"},
- {t:"浅浅优化CM大佬25年的杰作（提前祝大家过个小年）",cat:"AI",cc:"#0088CC",hot:1,p:210,l:73,v:1474,u:"Wcowin",ago:"9 分钟"}
+ {t:"浅浅优化CM大佬25年的杰作（提前祝大家过个小年）",cat:"AI",cc:"#0088CC",hot:1,p:210,v:1474,u:"Wcowin",ago:"9 分钟"}
 ];
 const CHIPS=[["全部",1],["互联网服务",0,"#2cb2b5"],["VPS",0,"#E45735"],["AI",0,"#0088CC"],["羊毛党",0,"#0088CC"],["数码与硬件",0,"#3184c4"],["优惠情报",0,"#dd3c3c"]];
 const PAL=["#0088CC","#F1592A","#549447","#921665","#E45735","#652D90"];
 const DIRS={
- a:{name:"原生 Material",dot:"#009966",level:"方向 A · 保守",dark:false,
+ a:{name:"原生 Material",short:"原生",dot:"#009966",level:"方向 A · 保守",dark:false,
     pitch:"白底 M3 清单式布局，品牌绿只做点睛（FAB/选中态）。最像“官方客户端”，学习成本最低。",
     notes:["信息密度适中，亮色优先，暗色作为系统跟随的第二主题","分类以彩色圆点弱表达，不干扰浏览"]},
- b:{name:"暖夜阅读",dot:"#1e1a15",level:"方向 B · 中间",dark:true,
+ b:{name:"暖夜阅读",short:"暖夜",dot:"#1e1a15",level:"方向 B · 中间",dark:true,
     pitch:"把站点招牌的暖棕黑暗色提为默认主题。密度更高，金晕/青晕等社区细节原生保留，适合重度用户。",
     notes:["暗底 #1e1a15 不是纯黑灰，是 NodeLoc 的识别度所在","管理员金色呼吸晕、版主青色系徽章"]},
- c:{name:"描边品牌",dot:"#FF9933",level:"方向 C · 激进",dark:false,
+ c:{name:"描边品牌",short:"描边",dot:"#FF9933",level:"方向 C · 激进",dark:false,
     pitch:"从 logo 的圆头描边语言出发：粗描边卡片、硬投影、纸感底、绿橙双色大胆撞。游戏化气质拉满。",
     notes:["公告做成旋转印章、热帖火焰计数，社区趣味显性化","GIF 徽章用橙色实块 + 步进旋转环，最有贴纸感"]}
 };
@@ -240,13 +252,18 @@ function rowHTML(r,dark){
  (r.pin?'<span class="pin">'+ICONS.pin+'公告</span>':'')+r.t+'</div>'+
  '<div class="rmeta"><span class="cat"><i style="background:'+r.cc+'"></i>'+r.cat+'</span>'+
  (r.p?'<span class="m">'+ICONS.bubble+r.p+'</span>':'')+
- '<span class="m">'+ICONS.eye+r.v+'</span>'+
  (r.hot?'<span class="m hotf">'+ICONS.flame+'热</span>':'')+
- '<span class="m" style="margin-left:auto">'+r.ago+'</span></div></div></div>';
+ '<span class="ago">'+r.ago+'</span></div></div></div>';
 }
 function build(dir){
  const D=DIRS[dir],dark=D.dark;
  const logo='<img class="logo" src="assets/nodeloc-logo.svg" alt="NodeLoc">';
+ const tsw='<div class="tsw" role="tablist" aria-label="外观">'+
+   Object.keys(DIRS).map(k=>
+    '<button data-k="'+k+'" class="'+(k===dir?"on":"")+'" title="'+DIRS[k].name+'">'+
+    '<i style="background:'+DIRS[k].dot+';'+(k==="b"?"box-shadow:0 0 0 2px rgba(255,255,255,.25)":"")+'"></i>'+
+    DIRS[k].short+'</button>').join("")+
+   '</div>';
  const chips=CHIPS.map(c=>{
    const st=c[2]?'<span class="dot" style="background:'+c[2]+'"></span>':'';
    return '<span class="chip'+(c[1]?' on':'')+'">'+st+c[0]+'</span>';}).join('');
@@ -255,17 +272,18 @@ function build(dir){
    return '<span class="nv'+(i===0?' on':'')+'"><span class="nvpill">'+ICONS[p[0]]+'</span>'+p[1]+'</span>';}).join('');
  const adminColor=dark?'#f5bf03':'#b8860b';
  let html='<div class="app">'+
- '<div class="sbar"><span>9:41</span><span>G▂▄▆ ᯤ ▮</span></div>'+
+ '<div class="sbar"><span>9:41</span><span class="sicons">'+ICONS.sig+ICONS.wifi+ICONS.batt+'</span></div>'+
  '<div class="abar">'+logo+'<span class="grow"></span>'+
    '<span class="iconbtn">'+ICONS.search+'</span>'+
    '<span class="iconbtn">'+ICONS.bell+'</span>'+
    '<span class="me"><img src="assets/avatar-james.png" alt=""></span></div>'+
+ tsw+
  '<div class="chips">'+chips+'</div>'+
  '<div class="list">'+ROWS.map(r=>rowHTML(r,dark)).join('')+'</div>'+
  '<div class="floor"><div class="fh">'+
    '<span class="fav"><span class="gifring"></span><img src="assets/avatar-james.png" alt=""></span>'+
-   '<div><div class="fn">James <span style="font-size:10px;font-weight:800;color:'+adminColor+'">ADMIN</span></div>'+
-   '<div class="fs">3 楼 · 楼主 · 刚刚</div></div>'+
+   '<span class="fwho"><span class="fn">James <span style="font-size:10px;font-weight:800;color:'+adminColor+'">ADMIN</span></span>'+
+   '<span class="fs" style="display:block">3 楼 · 楼主 · 刚刚</span></span>'+
    '<span class="gifbadge">'+ICONS.gifplay+'GIF 头像</span></div>'+
    '<p>详情页头像支持动图：这里按原样循环播放，不做任何滤镜或遮罩；列表页仍取静帧保证性能。</p></div>'+
  '<div class="nav">'+nav+'</div>';
@@ -275,15 +293,10 @@ function build(dir){
 }
 
 const order=["a","b","c"],KEY="nodeloc-dir";
-let cur=(()=>{const v=localStorage.getItem(KEY);return order.includes(v)?v:"a";})();
-const screenEl=document.getElementById("screen"),sw=document.getElementById("switcher");
-
-sw.innerHTML=order.map(k=>
- '<button class="swbtn" data-k="'+k+'"><i style="background:'+DIRS[k].dot+'"></i>'+
- DIRS[k].name+'<span class="kbd">'+(order.indexOf(k)+1)+'</span></button>').join('');
+let cur=(()=>{try{const v=localStorage.getItem(KEY);return order.includes(v)?v:"a";}catch(e){return "a";}})();
+const screenEl=document.getElementById("screen");
 
 function render(){
- document.querySelectorAll(".swbtn").forEach(b=>b.classList.toggle("on",b.dataset.k===cur));
  const D=DIRS[cur];
  screenEl.style.opacity=0;
  setTimeout(()=>{
@@ -295,11 +308,12 @@ function render(){
  document.getElementById("s-title").textContent=D.name;
  document.getElementById("s-pitch").textContent=D.pitch;
  document.getElementById("s-notes").innerHTML=D.notes.map(n=>"<li>"+n+"</li>").join("");
- localStorage.setItem(KEY,cur);
+ try{localStorage.setItem(KEY,cur);}catch(e){}
 }
-sw.addEventListener("click",e=>{
- const b=e.target.closest(".swbtn");
- if(b&&b.dataset.k!==cur){cur=b.dataset.k;render();}
+// 屏内切换:事件委托在持久存在的 screenEl 上
+screenEl.addEventListener("click",e=>{
+ const b=e.target.closest("[data-k]");
+ if(b&&order.includes(b.dataset.k)&&b.dataset.k!==cur){cur=b.dataset.k;render();}
 });
 document.addEventListener("keydown",e=>{
  if(e.key>="1"&&e.key<="3"){cur=order[e.key-1];render();}

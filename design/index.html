@@ -3,41 +3,54 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NodeLoc App 设计画布 · 三方向</title>
+<title>NodeLoc App 设计画布 · 三向切换</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-/* ============ 画布页自身(非手机屏) ============ */
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans-serif;color:#222;
-     padding:44px 32px 64px;-webkit-font-smoothing:antialiased}
-.intro{max-width:1340px;margin:0 auto 40px}
-.intro h1{font-size:30px;font-weight:800;letter-spacing:-.02em}
+     padding:40px 28px 64px;-webkit-font-smoothing:antialiased}
+.intro{max-width:1100px;margin:0 auto 26px;text-align:center}
+.intro h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
 .intro h1 em{font-style:normal;color:#009966}
-.intro>p{margin-top:10px;font-size:14px;color:#5c5850;max-width:76ch;text-wrap:pretty}
-.sys{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px}
-.sys span{font-size:12px;font-weight:600;padding:7px 12px;border-radius:999px;background:#fff;color:#454138;border:1px solid #dcd7cc}
-.sys span b{color:#009966}
-.phones{display:flex;gap:52px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:1400px;margin:0 auto}
-.phone{width:392px}
-.pitch{padding:0 6px 14px}
-.pitch .tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-.pitch .tag i{width:10px;height:10px;border-radius:50%;display:inline-block}
-.pitch h2{font-size:21px;font-weight:800;margin-top:6px;letter-spacing:-.01em}
-.pitch p{font-size:13px;line-height:1.65;color:#5c5850;margin-top:6px;text-wrap:pretty}
+.intro p{margin-top:8px;font-size:13.5px;color:#5c5850;text-wrap:pretty}
+.sys{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.sys span{font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:999px;background:#fff;color:#454138;border:1px solid #dcd7cc}
+.sys b{color:#009966}
+
+/* 切换器 */
+.switcher{display:flex;justify-content:center;gap:10px;margin:26px 0 22px;flex-wrap:wrap}
+.swbtn{display:inline-flex;align-items:center;gap:9px;padding:12px 20px;border-radius:999px;border:2px solid #d5cfc3;
+       background:#fff;font:inherit;font-size:14px;font-weight:700;color:#454138;cursor:pointer;
+       transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.swbtn i{width:11px;height:11px;border-radius:50%;display:inline-block}
+.swbtn:hover{transform:translateY(-2px)}
+.swbtn.on{border-color:#222;color:#111;box-shadow:0 6px 18px -6px rgba(30,26,21,.35)}
+.kbd{font-size:10px;font-weight:800;background:#efece4;border:1px solid #d5cfc3;border-radius:5px;padding:1px 6px;margin-left:2px}
+
+/* 舞台 */
+.stage-wrap{display:flex;gap:44px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:1000px;margin:0 auto}
+.stage{width:392px;flex:none}
 .screen{position:relative;width:392px;height:824px;border-radius:44px;overflow:hidden;
-        box-shadow:0 24px 60px -18px rgba(30,26,21,.35),0 0 0 10px #17150f;transform-origin:top left}
+        box-shadow:0 24px 60px -18px rgba(30,26,21,.35),0 0 0 10px #17150f;
+        transition:opacity .18s ease}
 .punch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:#000;z-index:60}
-.notes{padding:16px 8px 0;font-size:12.5px;line-height:1.7;color:#5c5850}
-.notes li{margin-left:18px;margin-top:4px;text-wrap:pretty}
-.pick{max-width:900px;margin:52px auto 0;background:#fff;border:1px solid #dcd7cc;border-radius:18px;padding:24px 28px;
+.side{max-width:330px;min-width:270px;flex:1;padding-top:6px}
+.side .tag{display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6b6558}
+.side .tag i{width:10px;height:10px;border-radius:50%}
+.side h2{font-size:23px;font-weight:800;margin-top:6px;letter-spacing:-.01em}
+.side>p{font-size:13.5px;line-height:1.7;color:#5c5850;margin-top:8px;text-wrap:pretty}
+.side ul{margin-top:14px;font-size:12.5px;line-height:1.7;color:#5c5850}
+.side li{margin-left:18px;margin-top:4px;text-wrap:pretty}
+.hint{margin-top:18px;font-size:11.5px;color:#8a857b}
+
+.pick{max-width:900px;margin:46px auto 0;background:#fff;border:1px solid #dcd7cc;border-radius:18px;padding:22px 28px;
       font-size:14px;line-height:1.75;color:#454138;text-wrap:pretty}
 .pick b{color:#009966}
 
-/* ============ 共享手机内部结构 ============ */
+/* ===== 手机内部共享结构 ===== */
 .app{position:absolute;inset:0;display:flex;flex-direction:column}
 .sbar{height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:12.5px;font-weight:700;flex:none}
-.sbar svg{vertical-align:-2px}
 .abar{height:58px;display:flex;align-items:center;gap:12px;padding:0 18px;flex:none;z-index:50}
 .abar .logo{height:21px;display:block}
 .abar .grow{flex:1}
@@ -50,49 +63,41 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
 .chip .dot{width:8px;height:8px;border-radius:50%}
 .list{flex:1;overflow:hidden;padding:2px 14px 8px;display:flex;flex-direction:column;gap:9px}
 .row{border-radius:16px;padding:12px 14px;display:flex;gap:12px;min-height:74px;cursor:pointer}
-.avwrap{flex:none;position:relative;width:44px;height:44px}
-.av{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block}
-.la{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-weight:800;font-size:18px}
+.avwrap{width:44px;height:44px;flex:none}
+.av,.la{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block}
+.la{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
 .rmain{flex:1;min-width:0}
 .rtitle{font-size:15px;font-weight:600;line-height:1.38;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty}
 .rmeta{display:flex;align-items:center;gap:11px;margin-top:7px;font-size:12px;font-weight:500}
 .rmeta .cat{display:inline-flex;align-items:center;gap:5px;font-weight:700}
-.rmeta .cat i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.rmeta .cat i{width:8px;height:8px;border-radius:50%}
 .rmeta .m{display:inline-flex;align-items:center;gap:4px}
-.pin{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:.05em;vertical-align:2px;margin-right:6px}
+.pin{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:.05em;margin-right:6px;vertical-align:2px}
 .hotf{color:#F1592A;font-weight:800}
-/* 楼层预览(帖子详情·GIF头像规则) */
 .floor{margin:2px 14px 10px;border-radius:16px;padding:12px 14px;flex:none}
 .floor .fh{display:flex;align-items:center;gap:11px}
 .floor .fav{position:relative;width:42px;height:42px;flex:none}
 .floor .fav img,.floor .fav .la{width:42px;height:42px;border-radius:50%}
 .floor .fn{font-size:13.5px;font-weight:700}
 .floor .fs{font-size:11.5px;margin-top:2px;font-weight:500}
-.gifbadge{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:.06em;
-          padding:4px 9px;border-radius:999px;flex:none}
+.gifbadge{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:.06em;padding:4px 9px;border-radius:999px;flex:none}
 .floor p{font-size:13px;line-height:1.6;margin-top:9px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty}
 @keyframes gifring{to{transform:rotate(360deg)}}
 .gifring{position:absolute;inset:-4px;border-radius:50%;pointer-events:none}
-/* 底部导航 */
 .nav{height:78px;display:flex;align-items:flex-start;padding-top:9px;flex:none}
 .nv{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;cursor:pointer}
 .nvpill{width:56px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center}
-.fab{position:absolute;right:18px;bottom:96px;width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;
-     cursor:pointer;box-shadow:0 10px 24px -6px rgba(0,153,102,.5)}
-.fabc{position:absolute;left:50%;bottom:88px;transform:translateX(-50%);width:62px;height:62px;border-radius:50%;
-      display:flex;align-items:center;justify-content:center;cursor:pointer}
+.fab{position:absolute;right:18px;bottom:96px;width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 24px -6px rgba(0,153,102,.5)}
+.fabc{position:absolute;left:50%;bottom:88px;transform:translateX(-50%);width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
 
-/* ============ 方向 A · Material 原生 ============ */
+/* ===== A 原生 Material ===== */
 .dir-a .screen{background:#fff}
 .dir-a .sbar{color:#222}
 .dir-a .abar{background:#fff;border-bottom:1px solid #eceef0}
 .dir-a .iconbtn{color:#45494d}
 .dir-a .me{box-shadow:0 0 0 2px #fff,0 0 0 4px #00996633}
-.dir-a .chips{background:#fff}
 .dir-a .chip{background:#f3f4f6;color:#5c6166}
 .dir-a .chip.on{background:#e2f3ec;color:#007a52}
-.dir-a .chip .dot{opacity:.9}
 .dir-a .row{background:#f8f9fa}
 .dir-a .rtitle{color:#202124}
 .dir-a .rmeta{color:#697077}
@@ -104,21 +109,20 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
 .dir-a .nav{background:#fff;border-top:1px solid #eceef0}
 .dir-a .nv{color:#9aa0a6}
 .dir-a .nv.on{color:#007a52}
-.dir-a .nvpill{background:transparent}
 .dir-a .nv.on .nvpill{background:#e2f3ec}
 .dir-a .fab{background:#009966;color:#fff}
 .dir-a .hotf{color:#c5221f}
 
-/* ============ 方向 B · 暖夜阅读 ============ */
+/* ===== B 暖夜阅读 ===== */
 .dir-b .screen{background:#1e1a15}
 .dir-b .sbar{color:#ddd6cb}
 .dir-b .abar{background:#12100d}
 .dir-b .iconbtn{color:#b9ac99}
-.dir-b .me{box-shadow:0 0 0 2px #12100d,0 0 0 3.5px #f5bf03;animation:pulseB 3s ease-in-out infinite}
+.dir-b .me{animation:pulseB 3s ease-in-out infinite}
 @keyframes pulseB{0%,100%{box-shadow:0 0 0 2px #12100d,0 0 10px 2px rgba(245,191,3,.35)}50%{box-shadow:0 0 0 2px #12100d,0 0 20px 5px rgba(245,191,3,.6)}}
 .dir-b .chip{background:#2a241d;color:#b3a793}
 .dir-b .chip.on{background:#12331f;color:#3ecf82}
-.dir-b .row{background:#272119;border:1px solid #372f24}
+.dir-b .row{background:#272119;border:1px solid #372f24;min-height:70px;padding:11px 13px}
 .dir-b .rtitle{color:#e8e0d2}
 .dir-b .rmeta{color:#a39684}
 .dir-b .pin{background:#F1592A;color:#fff}
@@ -130,10 +134,8 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
 .dir-b .nav{background:#12100d}
 .dir-b .nv{color:#7a7060}
 .dir-b .nv.on{color:#3ecf82}
-.dir-b .list{gap:8px}
-.dir-b .row{min-height:70px;padding:11px 13px}
 
-/* ============ 方向 C · 描边品牌 ============ */
+/* ===== C 描边品牌 ===== */
 .dir-c .screen{background:#faf5ec}
 .dir-c .sbar{color:#223029}
 .dir-c .abar{background:#faf5ec;border-bottom:2px solid #223029}
@@ -161,57 +163,31 @@ body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans
 
 <header class="intro">
   <h1>NodeLoc App · <em>首页话题流</em> 设计画布</h1>
-  <p>同一份真实内容(线上 latest.json,2025-08-24 抓取)× 三个方向,保守 → 激进排列。
-     所有色值/字体取自站点真实 CSS token,详见 research/brand-spec.md。</p>
+  <p>同一份真实内容(线上 latest.json 抓取),三种视觉方向一键切换。色值与字体取自站点真实 CSS token。</p>
   <div class="sys">
     <span>品牌绿 <b>#009966</b>/暗<b>#118a53</b></span><span>辅橙 <b>#FF9933</b></span>
-    <span>暖夜底 <b>#1e1a15</b></span><span>字体 <b>Montserrat</b>+PingFang SC</span>
-    <span>字阶 20/15/13/11</span><span>触达 ≥44dp</span><span>详情页支持 <b>GIF 头像</b>(原样循环)</span>
-    <span>管理员金晕 · 版主青晕 #62fedf</span>
+    <span>暖夜底 <b>#1e1a15</b></span><span><b>Montserrat</b>+PingFang SC</span>
+    <span>触达 ≥44dp</span><span>详情页 <b>GIF 头像</b>原样循环</span><span>管理员金晕 · 版主青晕</span>
   </div>
 </header>
 
-<main class="phones">
+<div class="switcher" id="switcher"></div>
 
-<!-- ═══════════ A ═══════════ -->
-<section class="phone dir-a">
-  <div class="pitch">
-    <span class="tag"><i style="background:#009966"></i>方向 A · 保守</span>
-    <h2>Material 原生</h2>
-    <p>白底 M3 清单式布局,品牌绿只做点睛(FAB/选中态)。最像"官方客户端",学习成本最低。</p>
-  </div>
-  <div class="screen"><div class="punch"></div><div class="app" id="app-a"></div></div>
-  <ul class="notes"><li>信息密度适中,亮色优先,暗色作为系统跟随的第二主题</li><li>分类以彩色圆点弱表达,不干扰浏览</li></ul>
-</section>
-
-<!-- ═══════════ B ═══════════ -->
-<section class="phone dir-b">
-  <div class="pitch">
-    <span class="tag"><i style="background:#1e1a15"></i>方向 B · 中间</span>
-    <h2>暖夜阅读</h2>
-    <p>把站点招牌的暖棕黑暗色提为默认主题。密度更高,金晕/青晕等社区细节原生保留,适合重度用户。</p>
-  </div>
-  <div class="screen"><div class="punch"></div><div class="app" id="app-b"></div></div>
-  <ul class="notes"><li>暗底 #1e1a15 不是纯黑灰,是 NL 的识别度所在</li><li>管理员金色呼吸晕(顶栏演示)、版主青色系徽章</li></ul>
-</section>
-
-<!-- ═══════════ C ═══════════ -->
-<section class="phone dir-c">
-  <div class="pitch">
-    <span class="tag"><i style="background:#FF9933"></i>方向 C · 激进</span>
-    <h2>描边品牌</h2>
-    <p>从 logo 的圆头描边语言出发:粗描边卡片、硬投影、纸感底、绿橙双色大胆撞。游戏化气质拉满。</p>
-  </div>
-  <div class="screen"><div class="punch"></div><div class="app" id="app-c"></div></div>
-  <ul class="notes"><li>公告做成旋转印章、热帖火焰计数,社区趣味显性化</li><li>GIF 徽章用橙色实块 + 步进旋转环,最有"贴纸感"</li></ul>
-</section>
-
-</main>
+<div class="stage-wrap">
+  <div class="stage"><div class="screen dir-a" id="screen"></div></div>
+  <aside class="side">
+    <span class="tag" id="s-tag"></span>
+    <h2 id="s-title"></h2>
+    <p id="s-pitch"></p>
+    <ul id="s-notes"></ul>
+    <div class="hint">快捷键:1 / 2 / 3 或 ← → 切换 · 选择会被记住</div>
+  </aside>
+</div>
 
 <footer class="pick">
-  选一个方向,或混搭(例如 <b>B 的暖夜底色 + C 的描边卡片</b>)。定稿后我把它落成 Jetpack Compose 的
-  ColorScheme/Type/Shape 三件套,并实现首屏话题流。
-  <br><small style="color:#8a857b">头像说明:列表页使用静态帧;帖子详情页允许 GIF 动图头像原样循环播放,三方向的「楼层预览」均演示了这一规则的播放态提示。</small>
+  选定后回复方向名(或混搭要求，例如「B 的暖夜底 + C 的描边卡片」)，我将其落地为 Jetpack Compose 的
+  ColorScheme / Type / Shape 三件套并实现首屏。
+  <br><small style="color:#8a857b">头像规则：列表页取静帧；帖子详情页允许 GIF 动图头像原样循环播放——楼层预览中的旋转环即为播放态提示。</small>
 </footer>
 
 <script>
@@ -240,54 +216,97 @@ const ROWS=[
 ];
 const CHIPS=[["全部",1],["互联网服务",0,"#2cb2b5"],["VPS",0,"#E45735"],["AI",0,"#0088CC"],["羊毛党",0,"#0088CC"],["数码与硬件",0,"#3184c4"],["优惠情报",0,"#dd3c3c"]];
 const PAL=["#0088CC","#F1592A","#549447","#921665","#E45735","#652D90"];
-function laBg(u){let h=0;for(const c of u)h=(h*31+c.charCodeAt(0))>>>0;return PAL[h%PAL.length];}
+const DIRS={
+ a:{name:"原生 Material",dot:"#009966",level:"方向 A · 保守",dark:false,
+    pitch:"白底 M3 清单式布局，品牌绿只做点睛（FAB/选中态）。最像“官方客户端”，学习成本最低。",
+    notes:["信息密度适中，亮色优先，暗色作为系统跟随的第二主题","分类以彩色圆点弱表达，不干扰浏览"]},
+ b:{name:"暖夜阅读",dot:"#1e1a15",level:"方向 B · 中间",dark:true,
+    pitch:"把站点招牌的暖棕黑暗色提为默认主题。密度更高，金晕/青晕等社区细节原生保留，适合重度用户。",
+    notes:["暗底 #1e1a15 不是纯黑灰，是 NodeLoc 的识别度所在","管理员金色呼吸晕、版主青色系徽章"]},
+ c:{name:"描边品牌",dot:"#FF9933",level:"方向 C · 激进",dark:false,
+    pitch:"从 logo 的圆头描边语言出发：粗描边卡片、硬投影、纸感底、绿橙双色大胆撞。游戏化气质拉满。",
+    notes:["公告做成旋转印章、热帖火焰计数，社区趣味显性化","GIF 徽章用橙色实块 + 步进旋转环，最有贴纸感"]}
+};
+
 function laHTML(u,dark){
- const c=laBg(u);
+ let h=0;for(const c of u)h=(h*31+c.charCodeAt(0))>>>0;
+ const c=PAL[h%PAL.length];
  return '<div class="la" style="background:'+c+(dark?'26':'1f')+';color:'+c+'">'+u[0].toUpperCase()+'</div>';
 }
-function avHTML(r,dark){
- return r.av ? '<img class="av" src="'+r.av+'" alt="">'
-             : '<div class="avwrap">'+laHTML(r.u,dark)+'</div>';
-}
 function rowHTML(r,dark){
- return '<div class="row"><div class="avwrap">'+(r.av?'<img class="av" src="'+r.av+'" alt="">':laHTML(r.u,dark))+'</div>'+
+ const av=r.av?'<img class="av" src="'+r.av+'" alt="">':laHTML(r.u,dark);
+ return '<div class="row"><div class="avwrap">'+av+'</div>'+
  '<div class="rmain"><div class="rtitle">'+
  (r.pin?'<span class="pin">'+ICONS.pin+'公告</span>':'')+r.t+'</div>'+
  '<div class="rmeta"><span class="cat"><i style="background:'+r.cc+'"></i>'+r.cat+'</span>'+
  (r.p?'<span class="m">'+ICONS.bubble+r.p+'</span>':'')+
- '<span class="m">'+ICONS.eye+(r.v??2)+'</span>'+
+ '<span class="m">'+ICONS.eye+r.v+'</span>'+
  (r.hot?'<span class="m hotf">'+ICONS.flame+'热</span>':'')+
  '<span class="m" style="margin-left:auto">'+r.ago+'</span></div></div></div>';
 }
-function build(dir,dark){
+function build(dir){
+ const D=DIRS[dir],dark=D.dark;
  const logo='<img class="logo" src="assets/nodeloc-logo.svg" alt="NodeLoc">';
- return ''+
+ const chips=CHIPS.map(c=>{
+   const st=c[2]?'<span class="dot" style="background:'+c[2]+'"></span>':'';
+   return '<span class="chip'+(c[1]?' on':'')+'">'+st+c[0]+'</span>';}).join('');
+ const nav=['home|首页','grid|分类','msg|消息','user|我的'].map((s,i)=>{
+   const p=s.split('|');
+   return '<span class="nv'+(i===0?' on':'')+'"><span class="nvpill">'+ICONS[p[0]]+'</span>'+p[1]+'</span>';}).join('');
+ const adminColor=dark?'#f5bf03':'#b8860b';
+ let html='<div class="app">'+
  '<div class="sbar"><span>9:41</span><span>G▂▄▆ ᯤ ▮</span></div>'+
  '<div class="abar">'+logo+'<span class="grow"></span>'+
    '<span class="iconbtn">'+ICONS.search+'</span>'+
    '<span class="iconbtn">'+ICONS.bell+'</span>'+
    '<span class="me"><img src="assets/avatar-james.png" alt=""></span></div>'+
- '<div class="chips">'+CHIPS.map(c=>{
-   const st=c[2]?'<span class="dot" style="background:'+c[2]+'"></span>':'';
-   return '<span class="chip'+(c[1]?' on':'')+'">'+st+c[0]+'</span>';}).join('')+'</div>'+
+ '<div class="chips">'+chips+'</div>'+
  '<div class="list">'+ROWS.map(r=>rowHTML(r,dark)).join('')+'</div>'+
  '<div class="floor"><div class="fh">'+
    '<span class="fav"><span class="gifring"></span><img src="assets/avatar-james.png" alt=""></span>'+
-   '<div><div class="fn">James <span style="font-size:10px;font-weight:800;color:'+(dark?'#f5bf03':'#b8860b')+'">ADMIN</span></div>'+
+   '<div><div class="fn">James <span style="font-size:10px;font-weight:800;color:'+adminColor+'">ADMIN</span></div>'+
    '<div class="fs">3 楼 · 楼主 · 刚刚</div></div>'+
    '<span class="gifbadge">'+ICONS.gifplay+'GIF 头像</span></div>'+
-   '<p>详情页头像支持动图:这里按原样循环播放,不做任何滤镜或遮罩;列表页仍取静帧保证性能。</p></div>'+
- '<div class="nav">'+
-   ['home|首页', 'grid|分类', 'msg|消息', 'user|我的'].map((s,i)=>{
-     const [ic,label]=s.split('|');
-     return '<span class="nv'+(i===0?' on':'')+'"><span class="nvpill">'+ICONS[ic]+'</span>'+label+'</span>';}).join('')+
- '</div>'+
- (dir==='a'?'<span class="fab">'+ICONS.plus+'</span>':
-  dir==='c'?'<span class="fabc" style="background:#FF9933;border:2.5px solid #223029;box-shadow:3px 3px 0 #223029;color:#223029">'+ICONS.plus+'</span>':'');
+   '<p>详情页头像支持动图：这里按原样循环播放，不做任何滤镜或遮罩；列表页仍取静帧保证性能。</p></div>'+
+ '<div class="nav">'+nav+'</div>';
+ if(dir==='a')html+='<span class="fab">'+ICONS.plus+'</span>';
+ if(dir==='c')html+='<span class="fabc" style="background:#FF9933;border:2.5px solid #223029;box-shadow:3px 3px 0 #223029;color:#223029">'+ICONS.plus+'</span>';
+ return html+'</div>';
 }
-document.getElementById('app-a').innerHTML=build('a',false);
-document.getElementById('app-b').innerHTML=build('b',true);
-document.getElementById('app-c').innerHTML=build('c',false);
+
+const order=["a","b","c"],KEY="nodeloc-dir";
+let cur=(()=>{const v=localStorage.getItem(KEY);return order.includes(v)?v:"a";})();
+const screenEl=document.getElementById("screen"),sw=document.getElementById("switcher");
+
+sw.innerHTML=order.map(k=>
+ '<button class="swbtn" data-k="'+k+'"><i style="background:'+DIRS[k].dot+'"></i>'+
+ DIRS[k].name+'<span class="kbd">'+(order.indexOf(k)+1)+'</span></button>').join('');
+
+function render(){
+ document.querySelectorAll(".swbtn").forEach(b=>b.classList.toggle("on",b.dataset.k===cur));
+ const D=DIRS[cur];
+ screenEl.style.opacity=0;
+ setTimeout(()=>{
+   screenEl.className="screen dir-"+cur;
+   screenEl.innerHTML='<div class="punch"></div>'+build(cur);
+   screenEl.style.opacity=1;
+ },160);
+ document.getElementById("s-tag").innerHTML='<i style="background:'+D.dot+'"></i>'+D.level;
+ document.getElementById("s-title").textContent=D.name;
+ document.getElementById("s-pitch").textContent=D.pitch;
+ document.getElementById("s-notes").innerHTML=D.notes.map(n=>"<li>"+n+"</li>").join("");
+ localStorage.setItem(KEY,cur);
+}
+sw.addEventListener("click",e=>{
+ const b=e.target.closest(".swbtn");
+ if(b&&b.dataset.k!==cur){cur=b.dataset.k;render();}
+});
+document.addEventListener("keydown",e=>{
+ if(e.key>="1"&&e.key<="3"){cur=order[e.key-1];render();}
+ if(e.key==="ArrowRight"){cur=order[(order.indexOf(cur)+1)%3];render();}
+ if(e.key==="ArrowLeft"){cur=order[(order.indexOf(cur)+2)%3];render();}
+});
+render();
 </script>
 </body>
 </html>

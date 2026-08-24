@@ -42,6 +42,7 @@ android {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
+            enableV1Signing = true
         }
     }
     compileOptions {

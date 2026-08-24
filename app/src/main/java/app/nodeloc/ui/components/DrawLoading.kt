@@ -57,7 +57,7 @@ fun DrawLoading(modifier: Modifier = Modifier, size: Dp = 132.dp) {
     val paths = remember {
         SEQ.map { (color, d) ->
             val p = Path()
-            p.addPath(PathParser().parsePath(d).toPath(), Offset(G_TX, 0f))
+            p.addPath(PathParser().parsePathString(d).toPath(), Offset(G_TX, 0f))
             val m = PathMeasure()
             m.setPath(p, false)
             Triple(color, p, m.length)

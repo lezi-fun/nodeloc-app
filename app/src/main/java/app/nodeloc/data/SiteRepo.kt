@@ -1,6 +1,6 @@
-package fun.lezi.nodeloc.data
+package app.nodeloc.data
 
-import fun.lezi.nodeloc.data.model.CategoryDto
+import app.nodeloc.data.model.CategoryDto
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
 

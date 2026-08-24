@@ -1,4 +1,4 @@
-package fun.lezi.nodeloc.ui
+package app.nodeloc.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
@@ -6,9 +6,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import fun.lezi.nodeloc.data.model.TopicDto
-import fun.lezi.nodeloc.ui.screens.TopicDetailScreen
-import fun.lezi.nodeloc.ui.screens.TopicListScreen
+import app.nodeloc.data.model.TopicDto
+import app.nodeloc.ui.screens.TopicDetailScreen
+import app.nodeloc.ui.screens.TopicListScreen
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive

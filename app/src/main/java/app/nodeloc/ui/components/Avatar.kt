@@ -1,4 +1,4 @@
-package fun.lezi.nodeloc.ui.components
+package app.nodeloc.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

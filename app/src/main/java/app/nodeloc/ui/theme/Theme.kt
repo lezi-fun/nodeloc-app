@@ -1,4 +1,4 @@
-package fun.lezi.nodeloc.ui.theme
+package app.nodeloc.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape

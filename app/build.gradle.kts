@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "fun.lezi.nodeloc"
+    namespace = "app.nodeloc"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "fun.lezi.nodeloc"
+        applicationId = "app.nodeloc"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

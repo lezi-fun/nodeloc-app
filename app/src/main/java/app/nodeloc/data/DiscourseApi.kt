@@ -1,8 +1,8 @@
-package fun.lezi.nodeloc.data
+package app.nodeloc.data
 
-import fun.lezi.nodeloc.data.model.LatestDto
-import fun.lezi.nodeloc.data.model.SiteDto
-import fun.lezi.nodeloc.data.model.TopicDetailDto
+import app.nodeloc.data.model.LatestDto
+import app.nodeloc.data.model.SiteDto
+import app.nodeloc.data.model.TopicDetailDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json

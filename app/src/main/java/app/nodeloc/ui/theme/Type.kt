@@ -1,11 +1,11 @@
-package fun.lezi.nodeloc.ui.theme
+package app.nodeloc.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import fun.lezi.nodeloc.R
+import app.nodeloc.R
 
 private val Montserrat = FontFamily(
     Font(R.font.montserrat, FontWeight.Normal,

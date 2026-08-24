@@ -1,4 +1,4 @@
-package fun.lezi.nodeloc.ui.screens
+package app.nodeloc.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,13 +44,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import fun.lezi.nodeloc.data.DiscourseApi
-import fun.lezi.nodeloc.data.SiteRepo
-import fun.lezi.nodeloc.data.model.CategoryDto
-import fun.lezi.nodeloc.data.model.TopicDto
-import fun.lezi.nodeloc.data.model.UserDto
-import fun.lezi.nodeloc.ui.components.Avatar
-import fun.lezi.nodeloc.ui.theme.LocalNodelocColors
+import app.nodeloc.data.DiscourseApi
+import app.nodeloc.data.SiteRepo
+import app.nodeloc.data.model.CategoryDto
+import app.nodeloc.data.model.TopicDto
+import app.nodeloc.data.model.UserDto
+import app.nodeloc.ui.components.Avatar
+import app.nodeloc.ui.theme.LocalNodelocColors
 import kotlinx.coroutines.launch
 
 private sealed interface ListState {

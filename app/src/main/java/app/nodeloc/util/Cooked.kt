@@ -1,4 +1,4 @@
-package fun.lezi.nodeloc.util
+package app.nodeloc.util
 
 import android.text.Html
 

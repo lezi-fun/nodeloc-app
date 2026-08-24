@@ -1,4 +1,4 @@
-package fun.lezi.nodeloc.ui.screens
+package app.nodeloc.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -46,14 +46,14 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import fun.lezi.nodeloc.data.DiscourseApi
-import fun.lezi.nodeloc.data.SiteRepo
-import fun.lezi.nodeloc.data.model.PostDto
-import fun.lezi.nodeloc.data.model.TopicDetailDto
-import fun.lezi.nodeloc.ui.DetailArgs
-import fun.lezi.nodeloc.ui.components.Avatar
-import fun.lezi.nodeloc.ui.theme.LocalNodelocColors
-import fun.lezi.nodeloc.util.cookedToText
+import app.nodeloc.data.DiscourseApi
+import app.nodeloc.data.SiteRepo
+import app.nodeloc.data.model.PostDto
+import app.nodeloc.data.model.TopicDetailDto
+import app.nodeloc.ui.DetailArgs
+import app.nodeloc.ui.components.Avatar
+import app.nodeloc.ui.theme.LocalNodelocColors
+import app.nodeloc.util.cookedToText
 
 private sealed interface DetailState {
     data object Loading : DetailState

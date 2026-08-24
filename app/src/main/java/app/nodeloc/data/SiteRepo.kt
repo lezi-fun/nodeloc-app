@@ -31,10 +31,10 @@ object SiteRepo {
             val m = ChronoUnit.MINUTES.between(t, OffsetDateTime.now(t.offset))
             when {
                 m < 1 -> "刚刚"
-                m < 60 -> m + " 分钟前"
-                m < 1440 -> ChronoUnit.HOURS.between(t, OffsetDateTime.now(t.offset)) + " 小时前"
-                m < 43200 -> ChronoUnit.DAYS.between(t, OffsetDateTime.now(t.offset)) + " 天前"
-                else -> ChronoUnit.DAYS.between(t, OffsetDateTime.now(t.offset)) / 30 + " 个月前"
+                m < 60 -> m.toString() + " 分钟前"
+                m < 1440 -> (ChronoUnit.HOURS.between(t, OffsetDateTime.now(t.offset))).toString() + " 小时前"
+                m < 43200 -> (ChronoUnit.DAYS.between(t, OffsetDateTime.now(t.offset))).toString() + " 天前"
+                else -> ((ChronoUnit.DAYS.between(t, OffsetDateTime.now(t.offset))) / 30).toString() + " 个月前"
             }
         }.getOrDefault("")
     }

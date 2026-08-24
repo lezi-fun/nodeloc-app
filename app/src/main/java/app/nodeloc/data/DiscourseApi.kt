@@ -45,7 +45,4 @@ object DiscourseApi {
     suspend fun site(): SiteDto =
         get("/site.json")
 
-    companion object {
-        val jsonMedia = "application/json; charset=utf-8".toMediaType()
-    }
 }

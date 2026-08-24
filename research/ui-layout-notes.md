@@ -53,3 +53,19 @@
 3. 按钮语言:全站胶囊形(r999);主操作绿底白字,暗色换深绿
 4. 信息架构:App 抽屉复刻「社区/资源/游戏/分类/标签」五组 + 底部快捷条;游戏分区是 NodeLoc 特色入口
 5. GIF 头像:详情页原样播放规则维持画布方案
+
+## 五、官方可选色板(重要补充)
+site.json `user_color_schemes` 内嵌全部 14 套方案的完整 colors 数组(含 primary/secondary/
+tertiary/header_*/selected/hover/highlight/danger/success/love)——无需猜测,App 可直接消费:
+
+| id | 方案 | 关键值(secondary/header) |
+|---|---|---|
+| 7 | NodeLoc(默认亮) | #fff / #fff |
+| 1 | **Dark(标准黑)** | #1f1a14 / #15120e · tertiary 全饱和 #009966 |
+| 8 | Dark - NodeLoc Classic(默认暗) | #1e1a15 / #12100d · tertiary #118a53 |
+| 2/3 | WCAG Light/Dark · 5/6 Solarized · 4 Dracula · 10/11 Horizon · 28-31 Meta Gaming/Purple | 同结构全量可得 |
+
+**架构决策:App 主题引擎 = Discourse 色板驱动**
+- ColorScheme 映射器把任意一套 colors 翻译成 Material3 ColorScheme
+- 默认跟随系统亮暗(scheme 7 / 8);设置页提供全部 14 套选择(白/黑/WCAG/Solarized/Dracula…)
+- 新色板随 site.json 自动生效,发版即可上新主题

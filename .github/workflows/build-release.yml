@@ -33,12 +33,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         if: steps.guard.outputs.present == 'true'
 
-      - name: Ensure debug keystore (release signing reuses debug store)
+      - name: Ensure debug keystore
         if: steps.guard.outputs.present == 'true'
         run: |
-          mkdir -p ~/.android
-          if [ ! -f ~/.android/debug.keystore ]; then
-            keytool -genkeypair -v -keystore ~/.android/debug.keystore \
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" \
               -storepass android -alias androiddebugkey -keypass android \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Android Debug,O=Android,C=US"

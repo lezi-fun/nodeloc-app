@@ -17,8 +17,16 @@ android {
         versionName = "0.1.0"
     }
 
+    val ksFile: String = System.getenv("NL_KEYSTORE")
+        ?: (System.getProperty("user.home") + "/.android/debug.keystore")
+
     signingConfigs {
-        create("release") { initWith(getByName("debug")) }
+        create("release") {
+            storeFile = file(ksFile)
+            storePassword = System.getenv("NL_KS_PASS") ?: "android"
+            keyAlias = System.getenv("NL_KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword = System.getenv("NL_KEY_PASS") ?: "android"
+        }
     }
 
     buildTypes {

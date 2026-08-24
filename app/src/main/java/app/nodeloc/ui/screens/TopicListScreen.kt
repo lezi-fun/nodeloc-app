@@ -118,13 +118,13 @@ fun TopicListScreen(onOpenTopic: (TopicDto) -> Unit) {
     Column(Modifier.fillMaxSize().background(nc.background)) {
         // ── 顶栏(A 方向:标题 + 图标) ──
         Row(
-            Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+            Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
                 painter = painterResource(R.drawable.nodeloc_logo),
                 contentDescription = "NodeLoc",
-                modifier = Modifier.padding(start = 4.dp).height(18.dp),
+                modifier = Modifier.height(30.dp),
             )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = {}) { Icon(Icons.Filled.Search, null, tint = nc.onSurfaceVariant) }

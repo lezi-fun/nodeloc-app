@@ -1,0 +1,10 @@
+const{default:e}=window.moduleBroker.lookup("@glimmer/component"),{trustHTML:t}=window.moduleBroker.lookup("@ember/template"),{default:o}=window.moduleBroker.lookup("discourse/helpers/replace-emoji"),{default:r}=window.moduleBroker.lookup("discourse/lib/get-url"),{i18n:i}=window.moduleBroker.lookup("discourse-i18n"),{setComponentTemplate:n}=window.moduleBroker.lookup("@ember/component"),{createTemplateFactory:l}=window.moduleBroker.lookup("@ember/template-factory"),{_INTERNAL_SOURCE_KEY:a}=window.moduleBroker.lookup("discourse/lib/api"),{withPluginApi:d}=window.moduleBroker.lookup("discourse/lib/plugin-api")
+function u(){return new Date((new Date).getFullYear()+1,0,1)}class s extends e{static shouldRender(e){return Boolean(e.isNewDashboard)}get toBeCreatedDate(){return moment(u()).format(i("dates.full_with_year_no_time"))}get settingsUrl(){return r("/admin/site_settings/category/plugins?filter=plugin%3Adiscourse-yearly-review")}static{n(l({id:null,block:'[[[10,0],[14,0,"yearly-review-admin-notice alert alert-info"],[12],[1,"\\n  "],[1,[28,[32,0],[[28,[32,1],[[28,[32,2],["yearly_review.admin_notice"],[["to_be_created_date","settings_url"],[[30,0,["toBeCreatedDate"]],[30,0,["settingsUrl"]]]]]],null]],null]],[1,"\\n"],[13]],[],[]]',moduleName:"(unknown template module)",scope:()=>[o,t,i],isStrictMode:!0}),this)}}class c extends s{static shouldRender(){return!0}}var m=Object.freeze({__proto__:null,LegacyDashboardYearlyReviewAdminNotice:c,default:s,janNextYear:u})
+const p=Object.freeze({type:"plugin",name:"discourse-yearly-review"})
+var w={name:"yearly-review-admin-notice",initialize(e){(function(...e){const t="string"==typeof e[0]?2:1
+e[t]={...e[t],[a]:p},d(...e)})(t=>{if(!e.lookup("service:site-settings").yearly_review_enabled)return
+11===(new Date).getMonth()&&(t.renderInOutlet("admin-dashboard-top",c),t.renderInOutlet("admin-dashboard-after-header",s))})}}
+const y={"discourse/components/yearly-review-admin-notice":m,"discourse/initializers/yearly-review-admin-notice":Object.freeze({__proto__:null,default:w})}
+export{y as default}
+
+//# sourceMappingURL=../../map/plugins/discourse-yearly-review_main.akCrkC-m6u4u7cx.digested.js.map

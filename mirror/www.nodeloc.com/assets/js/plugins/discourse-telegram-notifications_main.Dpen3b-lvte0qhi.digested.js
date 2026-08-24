@@ -1,0 +1,6 @@
+const{setComponentTemplate:e,Input:o}=window.moduleBroker.lookup("@ember/component"),{i18n:t}=window.moduleBroker.lookup("discourse-i18n"),{createTemplateFactory:l}=window.moduleBroker.lookup("@ember/template-factory"),{default:n}=window.moduleBroker.lookup("@ember/component/template-only")
+var r=e(l({id:null,block:'[[[10,0],[14,0,"control-group signatures"],[12],[1,"\\n  "],[10,"label"],[14,0,"control-label"],[12],[1,[28,[32,0],["telegram-notifications.preferences-title"],null]],[13],[1,"\\n  "],[10,0],[14,0,"controls"],[12],[1,"\\n    "],[10,"label"],[14,0,"text-label"],[12],[1,"\\n      "],[8,[32,1],null,[["@type","@value"],["text",[30,1,["custom_fields","telegram_chat_id"]]]],null],[1,"\\n    "],[13],[1,"\\n  "],[13],[1,"\\n  "],[10,0],[14,0,"instructions"],[12],[1,[28,[32,0],["telegram-notifications.instructions"],null]],[13],[1,"\\n"],[13]],["@model"],[]]',moduleName:"(unknown template module)",scope:()=>[t,o],isStrictMode:!0}),n())
+const u={"discourse/connectors/user-custom-preferences/telegram-chat-id-preferences":Object.freeze({__proto__:null,default:r})}
+export{u as default}
+
+//# sourceMappingURL=../../map/plugins/discourse-telegram-notifications_main.Dpen3b-lvte0qhi.digested.js.map

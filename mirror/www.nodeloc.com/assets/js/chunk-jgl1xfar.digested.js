@@ -1,0 +1,2 @@
+import{r as e}from"./chunk-ln9q81id.digested.js";import{ii as t}from"./chunk-kzds8qh6.digested.js";var n=e({default:()=>r});function r(e,n=`target.value`){return function(r){return e(t(r,n))}}export{n,r as t};
+//# sourceMappingURL=../map/chunk-jgl1xfar.digested.js.map

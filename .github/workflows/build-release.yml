@@ -1,0 +1,56 @@
+name: Build Release APK
+
+on:
+  push:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve short commit hash
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Detect Android project (skip until scaffold lands)
+        id: guard
+        run: echo "present=$([ -f gradlew ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        if: steps.guard.outputs.present == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Assemble release APK
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --stacktrace
+
+      - name: Stage APK with short-hash filename
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk "dist/nodeloc-${{ steps.sha.outputs.short }}.apk"
+
+      - name: Publish GitHub Release (title = short commit)
+        if: steps.guard.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="build-${{ steps.sha.outputs.short }}"
+          gh release create "$TAG" \
+            --title "${{ steps.sha.outputs.short }}" \
+            --notes "自动构建 · commit ${{ github.sha }}" \
+            --target "${{ github.sha }}" \
+            "dist/nodeloc-${{ steps.sha.outputs.short }}.apk" \
+          || gh release upload "$TAG" "dist/nodeloc-${{ steps.sha.outputs.short }}.apk" --clobber

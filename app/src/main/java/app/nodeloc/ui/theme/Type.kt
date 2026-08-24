@@ -1,7 +1,5 @@
 @file:OptIn(ExperimentalTextApi::class)
 
-@file:OptIn(ExperimentalTextApi::class)
-
 package app.nodeloc.ui.theme
 
 import androidx.compose.material3.Typography

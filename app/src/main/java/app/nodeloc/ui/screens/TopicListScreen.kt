@@ -53,7 +53,7 @@ import app.nodeloc.data.model.TopicDto
 import app.nodeloc.data.model.UserDto
 import app.nodeloc.R
 import app.nodeloc.ui.components.Avatar
-import app.nodeloc.ui.components.DrawLoading
+import app.nodeloc.ui.components.LoadingMark
 import app.nodeloc.ui.theme.LocalNodelocColors
 import kotlinx.coroutines.launch
 
@@ -124,15 +124,16 @@ fun TopicListScreen(onOpenTopic: (TopicDto) -> Unit) {
             Image(
                 painter = painterResource(R.drawable.nodeloc_logo),
                 contentDescription = "NodeLoc",
-                modifier = Modifier.weight(1f).height(18.dp),
+                modifier = Modifier.padding(start = 4.dp).height(18.dp),
             )
+            Spacer(Modifier.weight(1f))
             IconButton(onClick = {}) { Icon(Icons.Filled.Search, null, tint = nc.onSurfaceVariant) }
             IconButton(onClick = {}) { Icon(Icons.Filled.Notifications, null, tint = nc.onSurfaceVariant) }
         }
 
         when (val s = state) {
             is ListState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                DrawLoading()
+                LoadingMark()
             }
             is ListState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

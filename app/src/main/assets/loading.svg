@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="280" viewBox="0 0 960 280" role="img" aria-label="nodeloc">
+  <style>
+    .draw-path {
+      stroke-dasharray: 100 100;
+      stroke-dashoffset: 100;
+      animation: draw 0.4s ease forwards;
+    }
+    @keyframes draw {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+  </style>
+
+  <g transform="translate(30,0)" fill="none" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#009966">
+      <path class="draw-path" pathLength="100" style="animation-delay:0s" d="M0,222 L0,172 A50,50 0 0 1 100,172 L100,222"/>
+      <circle class="draw-path" pathLength="100" style="animation-delay:0.4s" cx="200" cy="172" r="50"/>
+      <circle class="draw-path" pathLength="100" style="animation-delay:0.8s" cx="350" cy="172" r="50"/>
+      <path class="draw-path" pathLength="100" style="animation-delay:1.2s" d="M400,58 L400,222"/>
+      <path class="draw-path" pathLength="100" style="animation-delay:1.6s" d="M450,172 L550,172"/>
+      <path class="draw-path" pathLength="100" style="animation-delay:2.0s" d="M550,172 A50,50 0 1 0 541,201"/>
+    </g>
+    <g stroke="#FF9933">
+      <path class="draw-path" pathLength="100" style="animation-delay:2.4s" d="M600,58 L600,222"/>
+      <circle class="draw-path" pathLength="100" style="animation-delay:2.8s" cx="700" cy="172" r="50"/>
+      <path class="draw-path" pathLength="100" style="animation-delay:3.2s" d="M891,143 A50,50 0 1 0 891,201"/>
+    </g>
+  </g>
+</svg>

@@ -18,7 +18,7 @@ android {
     }
 
     val ksFile: String = System.getenv("NL_KEYSTORE")
-        ?: (System.getProperty("user.home") + "/.android/debug.keystore")
+        ?: (rootDir.resolve("keystore/release.keystore").absolutePath)
 
     signingConfigs {
         create("release") {

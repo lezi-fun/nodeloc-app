@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NodeLoc App 设计画布 · 三方向</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============ 画布页自身(非手机屏) ============ */
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#edeae3;font-family:Montserrat,"Noto Sans SC","PingFang SC",sans-serif;color:#222;
+     padding:44px 32px 64px;-webkit-font-smoothing:antialiased}
+.intro{max-width:1340px;margin:0 auto 40px}
+.intro h1{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.intro h1 em{font-style:normal;color:#009966}
+.intro>p{margin-top:10px;font-size:14px;color:#5c5850;max-width:76ch;text-wrap:pretty}
+.sys{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px}
+.sys span{font-size:12px;font-weight:600;padding:7px 12px;border-radius:999px;background:#fff;color:#454138;border:1px solid #dcd7cc}
+.sys span b{color:#009966}
+.phones{display:flex;gap:52px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:1400px;margin:0 auto}
+.phone{width:392px}
+.pitch{padding:0 6px 14px}
+.pitch .tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.pitch .tag i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.pitch h2{font-size:21px;font-weight:800;margin-top:6px;letter-spacing:-.01em}
+.pitch p{font-size:13px;line-height:1.65;color:#5c5850;margin-top:6px;text-wrap:pretty}
+.screen{position:relative;width:392px;height:824px;border-radius:44px;overflow:hidden;
+        box-shadow:0 24px 60px -18px rgba(30,26,21,.35),0 0 0 10px #17150f;transform-origin:top left}
+.punch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:#000;z-index:60}
+.notes{padding:16px 8px 0;font-size:12.5px;line-height:1.7;color:#5c5850}
+.notes li{margin-left:18px;margin-top:4px;text-wrap:pretty}
+.pick{max-width:900px;margin:52px auto 0;background:#fff;border:1px solid #dcd7cc;border-radius:18px;padding:24px 28px;
+      font-size:14px;line-height:1.75;color:#454138;text-wrap:pretty}
+.pick b{color:#009966}
+
+/* ============ 共享手机内部结构 ============ */
+.app{position:absolute;inset:0;display:flex;flex-direction:column}
+.sbar{height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:12.5px;font-weight:700;flex:none}
+.sbar svg{vertical-align:-2px}
+.abar{height:58px;display:flex;align-items:center;gap:12px;padding:0 18px;flex:none;z-index:50}
+.abar .logo{height:21px;display:block}
+.abar .grow{flex:1}
+.iconbtn{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.me{position:relative;width:36px;height:36px;border-radius:50%}
+.me img{width:100%;height:100%;border-radius:50%;display:block;object-fit:cover}
+.chips{display:flex;gap:8px;padding:10px 16px 12px;overflow:hidden;flex:none}
+.chip{flex:none;height:36px;padding:0 13px;border-radius:999px;display:inline-flex;align-items:center;gap:7px;
+      font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer}
+.chip .dot{width:8px;height:8px;border-radius:50%}
+.list{flex:1;overflow:hidden;padding:2px 14px 8px;display:flex;flex-direction:column;gap:9px}
+.row{border-radius:16px;padding:12px 14px;display:flex;gap:12px;min-height:74px;cursor:pointer}
+.avwrap{flex:none;position:relative;width:44px;height:44px}
+.av{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block}
+.la{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:18px}
+.rmain{flex:1;min-width:0}
+.rtitle{font-size:15px;font-weight:600;line-height:1.38;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty}
+.rmeta{display:flex;align-items:center;gap:11px;margin-top:7px;font-size:12px;font-weight:500}
+.rmeta .cat{display:inline-flex;align-items:center;gap:5px;font-weight:700}
+.rmeta .cat i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.rmeta .m{display:inline-flex;align-items:center;gap:4px}
+.pin{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:.05em;vertical-align:2px;margin-right:6px}
+.hotf{color:#F1592A;font-weight:800}
+/* 楼层预览(帖子详情·GIF头像规则) */
+.floor{margin:2px 14px 10px;border-radius:16px;padding:12px 14px;flex:none}
+.floor .fh{display:flex;align-items:center;gap:11px}
+.floor .fav{position:relative;width:42px;height:42px;flex:none}
+.floor .fav img,.floor .fav .la{width:42px;height:42px;border-radius:50%}
+.floor .fn{font-size:13.5px;font-weight:700}
+.floor .fs{font-size:11.5px;margin-top:2px;font-weight:500}
+.gifbadge{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:.06em;
+          padding:4px 9px;border-radius:999px;flex:none}
+.floor p{font-size:13px;line-height:1.6;margin-top:9px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty}
+@keyframes gifring{to{transform:rotate(360deg)}}
+.gifring{position:absolute;inset:-4px;border-radius:50%;pointer-events:none}
+/* 底部导航 */
+.nav{height:78px;display:flex;align-items:flex-start;padding-top:9px;flex:none}
+.nv{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;cursor:pointer}
+.nvpill{width:56px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.fab{position:absolute;right:18px;bottom:96px;width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;
+     cursor:pointer;box-shadow:0 10px 24px -6px rgba(0,153,102,.5)}
+.fabc{position:absolute;left:50%;bottom:88px;transform:translateX(-50%);width:62px;height:62px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+/* ============ 方向 A · Material 原生 ============ */
+.dir-a .screen{background:#fff}
+.dir-a .sbar{color:#222}
+.dir-a .abar{background:#fff;border-bottom:1px solid #eceef0}
+.dir-a .iconbtn{color:#45494d}
+.dir-a .me{box-shadow:0 0 0 2px #fff,0 0 0 4px #00996633}
+.dir-a .chips{background:#fff}
+.dir-a .chip{background:#f3f4f6;color:#5c6166}
+.dir-a .chip.on{background:#e2f3ec;color:#007a52}
+.dir-a .chip .dot{opacity:.9}
+.dir-a .row{background:#f8f9fa}
+.dir-a .rtitle{color:#202124}
+.dir-a .rmeta{color:#697077}
+.dir-a .pin{background:#F1592A;color:#fff}
+.dir-a .floor{background:#f2f7f5;border:1px solid #e2ebe7}
+.dir-a .fn{color:#202124}.dir-a .fs{color:#697077}.dir-a .floor p{color:#3c4043}
+.dir-a .gifbadge{background:#e2f3ec;color:#007a52}
+.dir-a .gifring{background:conic-gradient(#009966 25%,transparent 0 100%);animation:gifring 2.4s linear infinite;opacity:.85}
+.dir-a .nav{background:#fff;border-top:1px solid #eceef0}
+.dir-a .nv{color:#9aa0a6}
+.dir-a .nv.on{color:#007a52}
+.dir-a .nvpill{background:transparent}
+.dir-a .nv.on .nvpill{background:#e2f3ec}
+.dir-a .fab{background:#009966;color:#fff}
+.dir-a .hotf{color:#c5221f}
+
+/* ============ 方向 B · 暖夜阅读 ============ */
+.dir-b .screen{background:#1e1a15}
+.dir-b .sbar{color:#ddd6cb}
+.dir-b .abar{background:#12100d}
+.dir-b .iconbtn{color:#b9ac99}
+.dir-b .me{box-shadow:0 0 0 2px #12100d,0 0 0 3.5px #f5bf03;animation:pulseB 3s ease-in-out infinite}
+@keyframes pulseB{0%,100%{box-shadow:0 0 0 2px #12100d,0 0 10px 2px rgba(245,191,3,.35)}50%{box-shadow:0 0 0 2px #12100d,0 0 20px 5px rgba(245,191,3,.6)}}
+.dir-b .chip{background:#2a241d;color:#b3a793}
+.dir-b .chip.on{background:#12331f;color:#3ecf82}
+.dir-b .row{background:#272119;border:1px solid #372f24}
+.dir-b .rtitle{color:#e8e0d2}
+.dir-b .rmeta{color:#a39684}
+.dir-b .pin{background:#F1592A;color:#fff}
+.dir-b .hotf{color:#ff7a45}
+.dir-b .floor{background:#231d16;border:1px solid #372f24}
+.dir-b .fn{color:#efe7d8}.dir-b .fs{color:#a39684}.dir-b .floor p{color:#cfc4b1}
+.dir-b .gifbadge{background:#0e2e22;color:#62fedf}
+.dir-b .gifring{background:conic-gradient(#118a53 25%,transparent 0 100%);animation:gifring 2.4s linear infinite;opacity:.9}
+.dir-b .nav{background:#12100d}
+.dir-b .nv{color:#7a7060}
+.dir-b .nv.on{color:#3ecf82}
+.dir-b .list{gap:8px}
+.dir-b .row{min-height:70px;padding:11px 13px}
+
+/* ============ 方向 C · 描边品牌 ============ */
+.dir-c .screen{background:#faf5ec}
+.dir-c .sbar{color:#223029}
+.dir-c .abar{background:#faf5ec;border-bottom:2px solid #223029}
+.dir-c .abar .logo{height:26px}
+.dir-c .iconbtn{color:#223029;border:2px solid #223029;background:#fff}
+.dir-c .me{box-shadow:0 0 0 2px #faf5ec,0 0 0 4px #223029}
+.dir-c .chip{background:#fff;border:2px solid #223029;color:#223029;border-radius:12px}
+.dir-c .chip.on{background:#009966;border-color:#223029;color:#fff}
+.dir-c .chip:not(.on) .dot{outline:2px solid #223029;outline-offset:-2px}
+.dir-c .row{background:#fff;border:2px solid #223029;border-radius:18px;box-shadow:4px 4px 0 rgba(34,48,41,.14)}
+.dir-c .rtitle{color:#223029}
+.dir-c .rmeta{color:#68736d}
+.dir-c .pin{background:#fff;color:#c2410c;border:2px solid #F1592A;transform:rotate(-3deg)}
+.dir-c .hotf{color:#c2410c}
+.dir-c .floor{background:#fff;border:2px dashed #223029;border-radius:18px}
+.dir-c .fn{color:#223029}.dir-c .fs{color:#68736d}.dir-c .floor p{color:#414d47}
+.dir-c .gifbadge{background:#FF9933;color:#223029;border:2px solid #223029}
+.dir-c .gifring{background:conic-gradient(#FF9933 25%,#223029 0 50%,transparent 0 100%);animation:gifring 2s steps(4) infinite}
+.dir-c .nav{background:#faf5ec;border-top:2px solid #223029}
+.dir-c .nv{color:#8a938d}
+.dir-c .nv.on{color:#223029;font-weight:800}
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <h1>NodeLoc App · <em>首页话题流</em> 设计画布</h1>
+  <p>同一份真实内容(线上 latest.json,2025-08-24 抓取)× 三个方向,保守 → 激进排列。
+     所有色值/字体取自站点真实 CSS token,详见 research/brand-spec.md。</p>
+  <div class="sys">
+    <span>品牌绿 <b>#009966</b>/暗<b>#118a53</b></span><span>辅橙 <b>#FF9933</b></span>
+    <span>暖夜底 <b>#1e1a15</b></span><span>字体 <b>Montserrat</b>+PingFang SC</span>
+    <span>字阶 20/15/13/11</span><span>触达 ≥44dp</span><span>详情页支持 <b>GIF 头像</b>(原样循环)</span>
+    <span>管理员金晕 · 版主青晕 #62fedf</span>
+  </div>
+</header>
+
+<main class="phones">
+
+<!-- ═══════════ A ═══════════ -->
+<section class="phone dir-a">
+  <div class="pitch">
+    <span class="tag"><i style="background:#009966"></i>方向 A · 保守</span>
+    <h2>Material 原生</h2>
+    <p>白底 M3 清单式布局,品牌绿只做点睛(FAB/选中态)。最像"官方客户端",学习成本最低。</p>
+  </div>
+  <div class="screen"><div class="punch"></div><div class="app" id="app-a"></div></div>
+  <ul class="notes"><li>信息密度适中,亮色优先,暗色作为系统跟随的第二主题</li><li>分类以彩色圆点弱表达,不干扰浏览</li></ul>
+</section>
+
+<!-- ═══════════ B ═══════════ -->
+<section class="phone dir-b">
+  <div class="pitch">
+    <span class="tag"><i style="background:#1e1a15"></i>方向 B · 中间</span>
+    <h2>暖夜阅读</h2>
+    <p>把站点招牌的暖棕黑暗色提为默认主题。密度更高,金晕/青晕等社区细节原生保留,适合重度用户。</p>
+  </div>
+  <div class="screen"><div class="punch"></div><div class="app" id="app-b"></div></div>
+  <ul class="notes"><li>暗底 #1e1a15 不是纯黑灰,是 NL 的识别度所在</li><li>管理员金色呼吸晕(顶栏演示)、版主青色系徽章</li></ul>
+</section>
+
+<!-- ═══════════ C ═══════════ -->
+<section class="phone dir-c">
+  <div class="pitch">
+    <span class="tag"><i style="background:#FF9933"></i>方向 C · 激进</span>
+    <h2>描边品牌</h2>
+    <p>从 logo 的圆头描边语言出发:粗描边卡片、硬投影、纸感底、绿橙双色大胆撞。游戏化气质拉满。</p>
+  </div>
+  <div class="screen"><div class="punch"></div><div class="app" id="app-c"></div></div>
+  <ul class="notes"><li>公告做成旋转印章、热帖火焰计数,社区趣味显性化</li><li>GIF 徽章用橙色实块 + 步进旋转环,最有"贴纸感"</li></ul>
+</section>
+
+</main>
+
+<footer class="pick">
+  选一个方向,或混搭(例如 <b>B 的暖夜底色 + C 的描边卡片</b>)。定稿后我把它落成 Jetpack Compose 的
+  ColorScheme/Type/Shape 三件套,并实现首屏话题流。
+  <br><small style="color:#8a857b">头像说明:列表页使用静态帧;帖子详情页允许 GIF 动图头像原样循环播放,三方向的「楼层预览」均演示了这一规则的播放态提示。</small>
+</footer>
+
+<script>
+const ICONS={
+ search:'<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+ bell:'<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg>',
+ home:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>',
+ grid:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+ msg:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H4l2.4-2.4A8 8 0 1 1 21 12z"/></svg>',
+ user:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-5.5 8-5.5s6.5 1.5 8 5.5"/></svg>,
+ plus:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'.replace('</svg>,',''),
+ bubble:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H4l2.4-2.4A8 8 0 1 1 21 12z"/></svg>',
+ eye:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
+ flame:'<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 4-3 5-3 9a3 3 0 0 0 6 0c0-1.5-.8-2.4-.8-2.4S17 10 17 14a5 5 0 0 1-10 0C7 8 13 7 12 2z"/></svg>',
+ pin:'<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3l5 5-6 2-4 7-2-2-5 6 6-5-2-2 7-4z"/></svg>',
+ gifplay:'<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
+};
+// ↑ plus icon 修正(避免转义问题)
+ICONS.plus='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+
+const ROWS=[
+ {t:"商家推广信息请统一发到推广节点",cat:"公告",cc:"#F1592A",pin:1,p:29,l:41,v:680,u:"daryenr",av:"assets/avatar-daryenr.png",ago:"59 分钟"},
+ {t:"RemakeFace Pro高级版逆向Web支持9款生图模型，支持API调用开箱即用",cat:"AI",cc:"#0088CC",u:"shf_huang",ago:"7 分钟"},
+ {t:"新一轮的12个月学生优惠gemini pro又又来了",cat:"羊毛党",cc:"#0088CC",hot:1,p:61,l:16,v:801,u:"153526739",ago:"8 分钟"},
+ {t:"anyns.io 免费权威 DNS 入驻 NL：分线解析、自定义线路、CF 加速、DDNS、API",cat:"推广",cc:"#921665",u:"yuqi9",ago:"8 分钟"},
+ {t:"搞了一个月的家宽，不知道可以干嘛用？",cat:"杂谈",cc:"#FFA500",u:"cc1359",ago:"9 分钟"},
+ {t:"浅浅优化CM大佬25年的杰作（提前祝大家过个小年）",cat:"AI",cc:"#0088CC",hot:1,p:210,l:73,v:1474,u:"Wcowin",ago:"9 分钟"}
+];
+const CHIPS=[["全部",1],["互联网服务",0,"#2cb2b5"],["VPS",0,"#E45735"],["AI",0,"#0088CC"],["羊毛党",0,"#0088CC"],["数码与硬件",0,"#3184c4"],["优惠情报",0,"#dd3c3c"]];
+const PAL=["#0088CC","#F1592A","#549447","#921665","#E45735","#652D90"];
+function laBg(u){let h=0;for(const c of u)h=(h*31+c.charCodeAt(0))>>>0;return PAL[h%PAL.length];}
+function laHTML(u,dark){
+ const c=laBg(u);
+ return '<div class="la" style="background:'+c+(dark?'26':'1f')+';color:'+c+'">'+u[0].toUpperCase()+'</div>';
+}
+function avHTML(r,dark){
+ return r.av ? '<img class="av" src="'+r.av+'" alt="">'
+             : '<div class="avwrap">'+laHTML(r.u,dark)+'</div>';
+}
+function rowHTML(r,dark){
+ return '<div class="row"><div class="avwrap">'+(r.av?'<img class="av" src="'+r.av+'" alt="">':laHTML(r.u,dark))+'</div>'+
+ '<div class="rmain"><div class="rtitle">'+
+ (r.pin?'<span class="pin">'+ICONS.pin+'公告</span>':'')+r.t+'</div>'+
+ '<div class="rmeta"><span class="cat"><i style="background:'+r.cc+'"></i>'+r.cat+'</span>'+
+ (r.p?'<span class="m">'+ICONS.bubble+r.p+'</span>':'')+
+ '<span class="m">'+ICONS.eye+(r.v??2)+'</span>'+
+ (r.hot?'<span class="m hotf">'+ICONS.flame+'热</span>':'')+
+ '<span class="m" style="margin-left:auto">'+r.ago+'</span></div></div></div>';
+}
+function build(dir,dark){
+ const logo='<img class="logo" src="assets/nodeloc-logo.svg" alt="NodeLoc">';
+ return ''+
+ '<div class="sbar"><span>9:41</span><span>G▂▄▆ ᯤ ▮</span></div>'+
+ '<div class="abar">'+logo+'<span class="grow"></span>'+
+   '<span class="iconbtn">'+ICONS.search+'</span>'+
+   '<span class="iconbtn">'+ICONS.bell+'</span>'+
+   '<span class="me"><img src="assets/avatar-james.png" alt=""></span></div>'+
+ '<div class="chips">'+CHIPS.map(c=>{
+   const st=c[2]?'<span class="dot" style="background:'+c[2]+'"></span>':'';
+   return '<span class="chip'+(c[1]?' on':'')+'">'+st+c[0]+'</span>';}).join('')+'</div>'+
+ '<div class="list">'+ROWS.map(r=>rowHTML(r,dark)).join('')+'</div>'+
+ '<div class="floor"><div class="fh">'+
+   '<span class="fav"><span class="gifring"></span><img src="assets/avatar-james.png" alt=""></span>'+
+   '<div><div class="fn">James <span style="font-size:10px;font-weight:800;color:'+(dark?'#f5bf03':'#b8860b')+'">ADMIN</span></div>'+
+   '<div class="fs">3 楼 · 楼主 · 刚刚</div></div>'+
+   '<span class="gifbadge">'+ICONS.gifplay+'GIF 头像</span></div>'+
+   '<p>详情页头像支持动图:这里按原样循环播放,不做任何滤镜或遮罩;列表页仍取静帧保证性能。</p></div>'+
+ '<div class="nav">'+
+   ['home|首页', 'grid|分类', 'msg|消息', 'user|我的'].map((s,i)=>{
+     const [ic,label]=s.split('|');
+     return '<span class="nv'+(i===0?' on':'')+'"><span class="nvpill">'+ICONS[ic]+'</span>'+label+'</span>';}).join('')+
+ '</div>'+
+ (dir==='a'?'<span class="fab">'+ICONS.plus+'</span>':
+  dir==='c'?'<span class="fabc" style="background:#FF9933;border:2.5px solid #223029;box-shadow:3px 3px 0 #223029;color:#223029">'+ICONS.plus+'</span>':'');
+}
+document.getElementById('app-a').innerHTML=build('a',false);
+document.getElementById('app-b').innerHTML=build('b',true);
+document.getElementById('app-c').innerHTML=build('c',false);
+</script>
+</body>
+</html>

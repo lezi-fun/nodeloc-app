@@ -26,6 +26,7 @@ android {
             storePassword = System.getenv("NL_KS_PASS") ?: "android"
             keyAlias = System.getenv("NL_KEY_ALIAS") ?: "androiddebugkey"
             keyPassword = System.getenv("NL_KEY_PASS") ?: "android"
+            enableV1Signing = true
         }
     }
 
@@ -42,7 +43,6 @@ android {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
-            enableV1Signing = true
         }
     }
     compileOptions {

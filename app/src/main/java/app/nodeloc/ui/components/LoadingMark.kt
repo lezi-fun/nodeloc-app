@@ -1,59 +1,41 @@
 package app.nodeloc.ui.components
 
-import android.annotation.SuppressLint
-import android.webkit.WebView
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-
-private const val HTML_HEAD =
-    "<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
-    "<style>html,body{margin:0;padding:0;height:100%;background:%BG%;overflow:hidden}" +
-    "body{display:flex;align-items:center;justify-content:center}" +
-    "#wrap svg{height:100%!important;width:auto!important;display:block}" +
-    "</style></head><body><div id=\"wrap\">"
-
-private const val HTML_TAIL =
-    "</div><script>" +
-    "setInterval(function(){var w=document.getElementById('wrap');" +
-    "w.innerHTML=w.innerHTML;},2600);" +
-    "</script></body></html>"
+import app.nodeloc.R
 
 /**
- * 官方加载动画:直接渲染 assets/loading.svg(字标描线),
- * 注入自适应 CSS 保证缩放入视图,JS 定时重放形成循环。
+ * 官方字标呼吸脉冲加载指示。
+ * 纯 Compose 实现(WebView 方案在部分设备上渲染空白,已弃用)。
  */
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun LoadingMark(modifier: Modifier = Modifier, height: Dp = 64.dp) {
-    val bg = MaterialTheme.colorScheme.background
-    AndroidView(
-        modifier = modifier.then(Modifier.height(height).aspectRatio(960f / 280f)),
-        factory = { ctx ->
-            WebView(ctx).apply {
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                settings.javaScriptEnabled = true
-                settings.loadWithOverviewMode = true
-                settings.useWideViewPort = true
-                isVerticalScrollBarEnabled = false
-                isHorizontalScrollBarEnabled = false
-            }
-        },
-        update = { web ->
-            val argb = Integer.toHexString(bg.toArgb())
-            val svg = web.context.assets.open("loading.svg").bufferedReader().use { it.readText() }
-            web.loadDataWithBaseURL(
-                null,
-                HTML_HEAD.replace("%BG%", "#" + argb.substring(2)) + svg + HTML_TAIL,
-                "text/html", "utf-8", null,
-            )
-        },
+fun LoadingMark(modifier: Modifier = Modifier, height: Dp = 30.dp) {
+    val transition = rememberInfiniteTransition(label = "pulse")
+    val alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(850, easing = FastOutSlowInEasing),
+            RepeatMode.Reverse,
+        ),
+        label = "alpha",
+    )
+    Image(
+        painter = painterResource(R.drawable.nodeloc_logo),
+        contentDescription = null,
+        modifier = modifier.then(Modifier.height(height).alpha(alpha)),
     )
 }

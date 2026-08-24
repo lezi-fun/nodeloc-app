@@ -1,0 +1,1 @@
+.checkin-button{position:relative}.checkin-button .d-icon{color:var(--tertiary);stroke-width:var(--lucide-icons-stroke-width, 2)}.checkin-button.checked-in .d-icon{color:var(--primary-medium);opacity:.7}.checkin-debug-indicator{position:absolute;top:0;left:0;font-size:10px;z-index:1000}

@@ -1,13 +1,16 @@
 package app.nodeloc.data
 
 import app.nodeloc.data.model.LatestDto
+import app.nodeloc.data.model.PostReplyHistoryDto
+import app.nodeloc.data.model.PostRepliesDto
+import app.nodeloc.data.model.PostsChunkDto
 import app.nodeloc.data.model.SiteDto
 import app.nodeloc.data.model.TopicDetailDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 
 object DiscourseApi {
@@ -44,5 +47,29 @@ object DiscourseApi {
 
     suspend fun site(): SiteDto =
         get("/site.json")
+
+    /** 按楼层 id 分块拉取(每块最多 20 条,Discourse 硬限制) */
+    suspend fun posts(topicId: Long, ids: List<Long>): PostsChunkDto =
+        withContext(Dispatchers.IO) {
+            val url = ("https://www.nodeloc.com/t/" + topicId + "/posts.json").toHttpUrl()
+                .newBuilder()
+                .apply { ids.take(20).forEach { addQueryParameter("post_ids[]", it.toString()) } }
+                .addQueryParameter("include_suggested", "false")
+                .build()
+            val req = Request.Builder().url(url).build()
+            client.newCall(req).execute().use { resp ->
+                val body = resp.body?.string()
+                check(resp.isSuccessful && body != null) { "HTTP " + resp.code }
+                json.decodeFromString(body)
+            }
+        }
+
+    /** Discourse 楼层下方的直接回复，after 为上次已加载回复的楼层号。 */
+    suspend fun replies(postId: Long, after: Int = 1): PostRepliesDto =
+        get("/posts/" + postId + "/replies?after=" + after.coerceAtLeast(1))
+
+    /** 当前楼层的回复来源链，用于展开“回复 @用户”上方预览。 */
+    suspend fun replyHistory(postId: Long): PostReplyHistoryDto =
+        get("/posts/" + postId + "/reply-history")
 
 }

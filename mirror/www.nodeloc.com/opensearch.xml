@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>NodeLoc Search</ShortName>
+  <Description>Search for posts on NodeLoc</Description>
+  <Tags>discourse forum</Tags>
+    <Image type="image/png">https://www.nodeloc.com/uploads/default/optimized/3X/2/e/2e2e01a21388ef23d2b2dfea1b4b780b94302eb2_2_32x32.png</Image>
+  <Url type="application/opensearchdescription+xml" rel="self" template="https://www.nodeloc.com/opensearch.xml"/>
+  <Url type="text/html" template="https://www.nodeloc.com/search?q={searchTerms}"/>
+  <Query role="example" searchTerms="search term"/>
+</OpenSearchDescription>

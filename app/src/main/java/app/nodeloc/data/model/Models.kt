@@ -54,19 +54,50 @@ data class TopicDetailDto(
 )
 
 @Serializable
-data class PostStreamDto(val posts: List<PostDto> = emptyList())
+data class PostStreamDto(
+    val posts: List<PostDto> = emptyList(),
+    /** 全部楼层 id(Discourse 分块拉取依据) */
+    val stream: List<Long> = emptyList(),
+)
+
+/** /t/{id}/posts.json?post_ids[]=… 的响应 */
+@Serializable
+data class PostsChunkDto(
+    @SerialName("post_stream") val postStream: PostStreamDto = PostStreamDto(),
+    val users: List<UserDto> = emptyList(),
+)
+
+@Serializable
+data class PostRepliesDto(
+    @SerialName("post_replies") val posts: List<PostDto> = emptyList(),
+)
+
+@Serializable
+data class PostReplyHistoryDto(
+    @SerialName("post_reply_histories") val posts: List<PostDto> = emptyList(),
+)
 
 @Serializable
 data class ActionSummaryDto(val id: Int = 0, val count: Int = 0)
 
 @Serializable
+data class ReplyToUserDto(
+    val id: Int = 0,
+    val username: String = "",
+    @SerialName("avatar_template") val avatarTemplate: String? = null,
+)
+
+@Serializable
 data class PostDto(
+    val id: Long = 0,
     val username: String,
     @SerialName("avatar_template") val avatarTemplate: String? = null,
     @SerialName("post_number") val postNumber: Int = 0,
     val cooked: String = "",
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("reply_to_post_number") val replyToPostNumber: Int? = null,
+    @SerialName("reply_to_user") val replyToUser: ReplyToUserDto? = null,
+    @SerialName("reply_count") val replyCount: Int = 0,
     @SerialName("actions_summary") val actionsSummary: List<ActionSummaryDto> = emptyList(),
 )
 

@@ -35,6 +35,12 @@ jobs:
 
       # 签名密钥库已固定于仓库 keystore/release.keystore(见 app/build.gradle.kts)
 
+      - name: Run unit tests
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          chmod +x ./gradlew
+          ./gradlew testReleaseUnitTest --stacktrace
+
       - name: Assemble release APK
         if: steps.guard.outputs.present == 'true'
         run: |

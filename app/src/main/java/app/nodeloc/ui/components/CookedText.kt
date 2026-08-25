@@ -42,6 +42,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import app.nodeloc.data.DiscourseApi
+import app.nodeloc.util.absoluteUrl
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
@@ -58,7 +60,7 @@ private sealed interface ParagraphPart {
 /** Discourse cooked HTML → Compose 富文本，按网页规则区分系统 emoji、自定义表情与正文图片。 */
 @Composable
 fun CookedText(html: String, modifier: Modifier = Modifier) {
-    val body = remember(html) { Jsoup.parseBodyFragment(html).body() }
+    val body = remember(html) { Jsoup.parseBodyFragment(html, DiscourseApi.BASE).body() }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         body.childNodes().forEach { RenderBlock(it) }
     }
@@ -231,7 +233,7 @@ private fun ContentImage(node: Element, href: String? = null) {
 private fun LinkBlock(node: Element) {
     val nc = MaterialTheme.colorScheme
     val context = LocalContext.current
-    val href = node.absUrl("href").ifBlank { resolveUrl(node.attr("href")) ?: node.attr("href") }
+    val href = node.absUrl("href").ifBlank { resolveUrl(node.attr("href")).orEmpty() }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -292,8 +294,4 @@ private fun Element.isEmoji(): Boolean = hasClass("emoji")
 
 private fun Element.nonEmojiImage(): Element? = selectFirst("img")?.takeUnless { it.isEmoji() }
 
-private fun resolveUrl(src: String): String? {
-    if (src.isBlank()) return null
-    if (src.startsWith("http://") || src.startsWith("https://")) return src
-    return app.nodeloc.data.DiscourseApi.BASE + if (src.startsWith('/')) src else "/$src"
-}
+private fun resolveUrl(src: String): String? = absoluteUrl(src, DiscourseApi.BASE)

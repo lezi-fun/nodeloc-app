@@ -31,6 +31,7 @@ import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.CookedText
 import app.nodeloc.ui.components.LoadingMark
 import app.nodeloc.ui.theme.LocalNodelocColors
+import app.nodeloc.util.hexColor
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.min
@@ -228,7 +229,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
         }
 
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(8.dp).background(Color(android.graphics.Color.parseColor(catColor)), CircleShape))
+            Box(Modifier.size(8.dp).background(hexColor(catColor), CircleShape))
             Spacer(Modifier.width(6.dp))
             Text(catName ?: "", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
             Spacer(Modifier.width(12.dp))
@@ -332,10 +333,10 @@ private fun PostItem(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(post.username, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = nc.onBackground)
-                    if (post.username.equals("James", true)) {
+                    post.staffBadge?.let { badge ->
                         Spacer(Modifier.width(7.dp))
                         Box(Modifier.background(nc.adminBadge, RoundedCornerShape(5.dp)).padding(horizontal = 6.dp, vertical = 1.5.dp)) {
-                            Text("ADMIN", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                            Text(badge, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
                                 color = if (nc.background.luminance() > 0.5f) Color.White else Color(0xFF12100D))
                         }
                     }

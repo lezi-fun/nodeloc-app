@@ -55,6 +55,7 @@ import app.nodeloc.R
 import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.LoadingMark
 import app.nodeloc.ui.theme.LocalNodelocColors
+import app.nodeloc.util.hexColor
 import kotlinx.coroutines.launch
 
 private sealed interface ListState {
@@ -200,7 +201,7 @@ private fun TopicRow(t: TopicDto, op: UserDto?, cat: CategoryDto?, onClick: () -
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     cat?.let { c ->
-                        Box(Modifier.size(8.dp).background(Color(android.graphics.Color.parseColor("#" + c.color)), CircleShape))
+                        Box(Modifier.size(8.dp).background(hexColor(c.color), CircleShape))
                         Spacer(Modifier.width(5.dp))
                         Text(c.name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
                         Spacer(Modifier.width(10.dp))

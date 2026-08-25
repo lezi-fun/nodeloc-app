@@ -1,6 +1,7 @@
 package app.nodeloc.data
 
 import app.nodeloc.data.model.CategoryDto
+import app.nodeloc.util.absoluteUrl
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
 
@@ -16,12 +17,12 @@ object SiteRepo {
 
     suspend fun category(id: Int): CategoryDto? = categories()[id]
 
-    fun avatarUrl(template: String?, size: Int = 96): String? {
-        if (template.isNullOrBlank()) return null
-        val path = if (template.startsWith("http")) template.replace("{size}", size.toString())
-                   else DiscourseApi.BASE + template.replace("{size}", size.toString())
-        return path
-    }
+    /**
+     * `avatar_template` 形如 `/user_avatar/www.nodeloc.com/xx/{size}/123_2.png`,
+     * 也可能是 CDN 上的协议相对地址,交给 [absoluteUrl] 统一归一化。
+     */
+    fun avatarUrl(template: String?, size: Int = 96): String? =
+        absoluteUrl(template?.replace("{size}", size.toString()), DiscourseApi.BASE)
 
     /** ISO8601 → 「x 分钟前」 */
     fun relativeTime(iso: String?): String {

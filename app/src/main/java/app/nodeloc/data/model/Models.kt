@@ -122,7 +122,20 @@ data class PostDto(
     @SerialName("total_descendant_count") val totalDescendantCount: Int = 0,
     val children: List<PostDto>? = null,
     @SerialName("actions_summary") val actionsSummary: List<ActionSummaryDto> = emptyList(),
-)
+    /** 以下三项由 Discourse 逐楼层下发,用于展示身份徽章 */
+    val admin: Boolean = false,
+    val moderator: Boolean = false,
+    val staff: Boolean = false,
+) {
+    /** 徽章文案:管理员 → ADMIN,版主 → MOD,其余职员 → STAFF,普通用户无。 */
+    val staffBadge: String?
+        get() = when {
+            admin -> "ADMIN"
+            moderator -> "MOD"
+            staff -> "STAFF"
+            else -> null
+        }
+}
 
 @Serializable
 data class SiteDto(val categories: List<CategoryDto> = emptyList())

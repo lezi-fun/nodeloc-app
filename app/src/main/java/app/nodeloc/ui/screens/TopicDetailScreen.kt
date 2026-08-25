@@ -74,6 +74,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
     var childLoading by remember(args.id) { mutableStateOf<Set<Long>>(emptySet()) }
     var loadingMore by remember(args.id) { mutableStateOf(false) }
     var loadError by remember(args.id) { mutableStateOf<String?>(null) }
+    var reloadToken by remember(args.id) { mutableIntStateOf(0) }
 
     val loadedIds = remember(posts) { posts.mapTo(HashSet()) { it.id } }
     val canLoadMoreClassic = streamIds.any { it !in loadedIds }
@@ -175,7 +176,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
         }
     }
 
-    LaunchedEffect(args.id) {
+    LaunchedEffect(args.id, reloadToken) {
         state = DetailState.Loading
         loggedIn = false
         posts = emptyList()
@@ -184,6 +185,11 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
         roots = emptyList()
         expandedPosts = emptySet()
         childrenByPost = emptyMap()
+        childPages = emptyMap()
+        childHasMore = emptyMap()
+        childLoading = emptySet()
+        loadingMore = false
+        loadError = null
         launch { loggedIn = runCatching { DiscourseApi.hasActiveSession() }.getOrDefault(false) }
         try {
             val detail = DiscourseApi.topic(args.id)
@@ -221,35 +227,69 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().background(nc.background)) {
-        Row(Modifier.fillMaxWidth().height(56.dp).background(nc.headerBg), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = nc.onBackground) }
-            Text(args.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = nc.onBackground,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            IconButton(onClick = {}) { Icon(Icons.Filled.MoreVert, null, tint = nc.onSurfaceVariant) }
-        }
-
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(8.dp).background(hexColor(catColor), CircleShape))
-            Spacer(Modifier.width(6.dp))
-            Text(catName ?: "", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
-            Spacer(Modifier.width(12.dp))
-            (state as? DetailState.Ready)?.detail?.let { detail ->
-                Text("${(detail.postsCount - 1).coerceAtLeast(0)} 回复 · ${detail.views} 浏览",
-                    style = MaterialTheme.typography.labelMedium, color = nc.onSurfaceVariant)
+        Row(
+            Modifier.fillMaxWidth().height(56.dp).background(nc.headerBg),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = nc.onBackground)
+            }
+            Text(
+                args.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = nc.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = {}) {
+                Icon(Icons.Filled.MoreVert, "更多", tint = nc.onSurfaceVariant)
             }
         }
+        HorizontalDivider(color = nc.outlineVariant)
+
+        Row(
+            Modifier.fillMaxWidth().background(nc.headerBg).padding(horizontal = 18.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(8.dp).background(hexColor(catColor), CircleShape))
+            Spacer(Modifier.width(6.dp))
+            Text(catName ?: "", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
+            Spacer(Modifier.width(12.dp))
+            (state as? DetailState.Ready)?.detail?.let { detail ->
+                Text(
+                    "${(detail.postsCount - 1).coerceAtLeast(0)} 回复 · ${detail.views} 浏览",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = nc.onSurfaceVariant,
+                )
+            }
+        }
+        HorizontalDivider(color = nc.outlineVariant)
 
         when (val current = state) {
             DetailState.Loading -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { LoadingMark() }
             is DetailState.Error -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(current.message, color = nc.onSurfaceVariant)
-                    TextButton(onClick = onBack) { Text("返回列表", color = nc.primary) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { reloadToken++ }) { Text("重试", color = nc.primary) }
+                        TextButton(onClick = onBack) { Text("返回列表", color = nc.primary) }
+                    }
                 }
             }
             is DetailState.Ready -> LazyColumn(
-                state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp),
+                state = listState,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
+                if (displayPosts.isEmpty()) {
+                    item(key = "empty-posts") {
+                        Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+                            Text("暂无回复", color = nc.onSurfaceVariant)
+                        }
+                    }
+                }
                 items(displayPosts, key = { "post-${it.post.id}" }) { item ->
                     val post = item.post
                     val hasDescendants = post.totalDescendantCount > 0 || post.children.orEmpty().isNotEmpty() ||
@@ -259,6 +299,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
                         post.id in childLoading, childHasMore[post.id] == true, loggedIn,
                         { toggleChildren(item) }, { loadMoreChildren(item) },
                     )
+                    HorizontalDivider(color = nc.outlineVariant)
                 }
                 item(key = "pagination") {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -277,16 +318,38 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
         }
 
         if (loggedIn) {
-            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 0.dp) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(value = "", onValueChange = {}, readOnly = true,
-                        placeholder = { Text("回复此话题…", color = nc.onSurfaceVariant) }, shape = RoundedCornerShape(21.dp),
-                        colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = nc.outlineVariant, focusedBorderColor = nc.primary),
-                        modifier = Modifier.weight(1f).heightIn(min = 42.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 0.dp,
+                modifier = Modifier.navigationBarsPadding().imePadding(),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        value = "",
+                        onValueChange = {},
+                        readOnly = true,
+                        placeholder = { Text("回复此话题…", color = nc.onSurfaceVariant) },
+                        shape = RoundedCornerShape(21.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = nc.outlineVariant,
+                            focusedBorderColor = nc.primary,
+                        ),
+                        modifier = Modifier.weight(1f).heightIn(min = 42.dp),
+                    )
                     Spacer(Modifier.width(10.dp))
-                    FilledIconButton(onClick = {}, shape = CircleShape,
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = nc.primary, contentColor = nc.onPrimary)) {
-                        Icon(Icons.AutoMirrored.Filled.Send, null)
+                    FilledIconButton(
+                        onClick = {},
+                        enabled = false,
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = nc.primary,
+                            contentColor = nc.onPrimary,
+                        ),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, "发送")
                     }
                 }
             }
@@ -320,7 +383,13 @@ private fun PostItem(
         }
     }
 
-    Column(Modifier.fillMaxWidth().then(railModifier).padding(start = 16.dp + railSpacing * depth, end = 16.dp)) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(nc.surface)
+            .then(railModifier)
+            .padding(start = 16.dp + railSpacing * depth, end = 16.dp),
+    ) {
         Row(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
             if (nestedMode && hasDescendants && expanded) {
                 IconButton(onClick = onToggleChildren, modifier = Modifier.size(36.dp)) {
@@ -347,7 +416,7 @@ private fun PostItem(
                     color = nc.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
                 CookedText(post.cooked, Modifier.padding(top = 7.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
-                    Icon(Icons.Filled.Favorite, null, tint = nc.onSurfaceVariant, modifier = Modifier.size(15.dp))
+                    Icon(Icons.Filled.FavoriteBorder, "点赞", tint = nc.onSurfaceVariant, modifier = Modifier.size(15.dp))
                     if (likes > 0) { Spacer(Modifier.width(4.dp)); Text(likes.toString(), style = MaterialTheme.typography.labelMedium, color = nc.onSurfaceVariant) }
                     if (canReply) { Spacer(Modifier.width(22.dp)); Text("回复", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant) }
                     Spacer(Modifier.width(22.dp)); Icon(Icons.Filled.Share, null, tint = nc.onSurfaceVariant, modifier = Modifier.size(14.dp))

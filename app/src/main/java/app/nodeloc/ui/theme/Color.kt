@@ -2,24 +2,24 @@ package app.nodeloc.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// 方向 A · 原生 Material(浅色)
+// 官网默认浅色主题
 val ALight = NodelocColors(
     primary = Color(0xFF009966), onPrimary = Color.White,
-    background = Color(0xFFFFFFFF), onBackground = Color(0xFF202124),
-    surface = Color(0xFFF8F9FA), onSurface = Color(0xFF202124),
-    surfaceVariant = Color(0xFFF1F3F2), onSurfaceVariant = Color(0xFF697077),
-    outlineVariant = Color(0xFFECEEF0),
+    background = Color(0xFFEDEAE3), onBackground = Color(0xFF222222),
+    surface = Color(0xFFFFFFFF), onSurface = Color(0xFF222222),
+    surfaceVariant = Color(0xFFF8F8F8), onSurfaceVariant = Color(0xFF646464),
+    outlineVariant = Color(0xFFE2DED5),
     secondaryContainer = Color(0xFFE2F3EC), onSecondaryContainer = Color(0xFF007A52),
     headerBg = Color(0xFFFFFFFF), hot = Color(0xFFC5221F), adminBadge = Color(0xFFB8860B)
 )
 
-// 方向 B · 暖夜阅读(深色)
+// NodeLoc Classic 官网默认深色主题
 val BDark = NodelocColors(
-    primary = Color(0xFF3ECF82), onPrimary = Color(0xFF0E2418),
-    background = Color(0xFF1E1A15), onBackground = Color(0xFFE8E0D2),
-    surface = Color(0xFF272119), onSurface = Color(0xFFE8E0D2),
+    primary = Color(0xFF118A53), onPrimary = Color.White,
+    background = Color(0xFF1E1A15), onBackground = Color(0xFFD5D5D5),
+    surface = Color(0xFF231D16), onSurface = Color(0xFFD5D5D5),
     surfaceVariant = Color(0xFF2A241D), onSurfaceVariant = Color(0xFFA39684),
     outlineVariant = Color(0xFF372F24),
-    secondaryContainer = Color(0xFF12331F), onSecondaryContainer = Color(0xFF3ECF82),
-    headerBg = Color(0xFF12100D), hot = Color(0xFFFF7A45), adminBadge = Color(0xFFF5BF03)
+    secondaryContainer = Color(0xFF0E2E22), onSecondaryContainer = Color(0xFF62FEDF),
+    headerBg = Color(0xFF12100D), hot = Color(0xFFE45735), adminBadge = Color(0xFFF5BF03)
 )

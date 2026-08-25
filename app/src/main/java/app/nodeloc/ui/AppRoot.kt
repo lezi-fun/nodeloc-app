@@ -1,34 +1,48 @@
 package app.nodeloc.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.nodeloc.data.model.TopicDto
+import app.nodeloc.ui.components.NodeLocDrawer
 import app.nodeloc.ui.screens.TopicDetailScreen
 import app.nodeloc.ui.screens.TopicListScreen
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-/** 极简双屏导航:列表 ⇄ 详情(与设计画布交互一致) */
 @Composable
 fun AppRoot() {
     var detailJson by rememberSaveable { mutableStateOf<String?>(null) }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-    BackHandler(enabled = detailJson != null) { detailJson = null }
+    BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
+    BackHandler(enabled = detailJson != null && !drawerState.isOpen) { detailJson = null }
 
-    val d = detailJson?.let { runCatching { DetailArgs.fromJson(it) }.getOrNull() }
-    if (d == null) {
-        TopicListScreen(
-            onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() }
-        )
-    } else {
-        TopicDetailScreen(args = d, onBack = { detailJson = null })
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = { NodeLocDrawer(onClose = { scope.launch { drawerState.close() } }) },
+    ) {
+        val d = detailJson?.let { runCatching { DetailArgs.fromJson(it) }.getOrNull() }
+        if (d == null) {
+            TopicListScreen(
+                onOpenDrawer = { scope.launch { drawerState.open() } },
+                onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() },
+            )
+        } else {
+            TopicDetailScreen(args = d, onBack = { detailJson = null })
+        }
     }
 }
 

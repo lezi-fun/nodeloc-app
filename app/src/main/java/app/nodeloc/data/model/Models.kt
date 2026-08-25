@@ -47,10 +47,30 @@ data class TopicDto(
 data class TopicDetailDto(
     val id: Long,
     val title: String,
+    val slug: String = "topic",
     val views: Int = 0,
     @SerialName("posts_count") val postsCount: Int = 0,
     @SerialName("category_id") val categoryId: Int = 0,
+    @SerialName("is_nested_view") val isNestedView: Boolean = false,
     @SerialName("post_stream") val postStream: PostStreamDto = PostStreamDto(),
+)
+
+@Serializable
+data class NestedTopicDto(
+    val topic: TopicDetailDto,
+    @SerialName("op_post") val opPost: PostDto,
+    val roots: List<PostDto> = emptyList(),
+    val page: Int = 0,
+    val sort: String = "top",
+    @SerialName("effective_sort") val effectiveSort: String = sort,
+    @SerialName("has_more_roots") val hasMoreRoots: Boolean = false,
+)
+
+@Serializable
+data class NestedChildrenDto(
+    val children: List<PostDto> = emptyList(),
+    val page: Int = 0,
+    @SerialName("has_more") val hasMore: Boolean = false,
 )
 
 @Serializable
@@ -90,7 +110,7 @@ data class ReplyToUserDto(
 @Serializable
 data class PostDto(
     val id: Long = 0,
-    val username: String,
+    val username: String = "",
     @SerialName("avatar_template") val avatarTemplate: String? = null,
     @SerialName("post_number") val postNumber: Int = 0,
     val cooked: String = "",
@@ -98,6 +118,9 @@ data class PostDto(
     @SerialName("reply_to_post_number") val replyToPostNumber: Int? = null,
     @SerialName("reply_to_user") val replyToUser: ReplyToUserDto? = null,
     @SerialName("reply_count") val replyCount: Int = 0,
+    @SerialName("direct_reply_count") val directReplyCount: Int = 0,
+    @SerialName("total_descendant_count") val totalDescendantCount: Int = 0,
+    val children: List<PostDto>? = null,
     @SerialName("actions_summary") val actionsSummary: List<ActionSummaryDto> = emptyList(),
 )
 

@@ -1,6 +1,8 @@
 package app.nodeloc.data
 
 import app.nodeloc.data.model.LatestDto
+import app.nodeloc.data.model.NestedChildrenDto
+import app.nodeloc.data.model.NestedTopicDto
 import app.nodeloc.data.model.PostReplyHistoryDto
 import app.nodeloc.data.model.PostRepliesDto
 import app.nodeloc.data.model.PostsChunkDto
@@ -44,6 +46,26 @@ object DiscourseApi {
 
     suspend fun topic(id: Long): TopicDetailDto =
         get("/t/" + id + ".json?track_visit=false")
+
+    suspend fun nestedTopic(slug: String, id: Long, page: Int = 0, sort: String = "top"): NestedTopicDto =
+        get("/n/" + slug + "/" + id + ".json?page=" + page + "&sort=" + sort)
+
+    suspend fun nestedChildren(
+        slug: String,
+        id: Long,
+        parentPostNumber: Int,
+        depth: Int,
+        page: Int = 0,
+        sort: String = "top",
+    ): NestedChildrenDto = get(
+        "/n/" + slug + "/" + id + "/children/" + parentPostNumber +
+            ".json?page=" + page + "&sort=" + sort + "&depth=" + depth.coerceAtLeast(1),
+    )
+
+    suspend fun hasActiveSession(): Boolean = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(BASE + "/session/current.json").build()
+        client.newCall(req).execute().use { it.isSuccessful }
+    }
 
     suspend fun site(): SiteDto =
         get("/site.json")

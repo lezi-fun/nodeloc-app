@@ -1,6 +1,6 @@
 # NodeLoc 网页版布局与样式实测笔记
 
-> 采集方式:无头 Chrome 真渲染 + getComputedStyle 探针(非目测) · 2025-08-24
+> 采集方式:无头 Chrome 真渲染 + getComputedStyle 探针(非目测) · 2026-08-24
 > 截图:research/ui-ref/{nl-desktop-light,dark,nl-mobile-light,nl-mobile-drawer,nl-mobile-dark-drawer}.png
 > 数据:ui-styles-{light,dark}.json · ui-struct-desktop.json · ui-mobile-drawer.json
 

@@ -1,6 +1,6 @@
 # NodeLoc 品牌规格（brand-spec.md）
 
-> 来源:https://www.nodeloc.com 线上站点实测(2025-08 抓取),非猜测。
+> 来源:https://www.nodeloc.com 线上站点实测(2026-08 抓取),非猜测。
 > 资产目录: research/assets/
 
 ## 一句话定位
@@ -48,6 +48,6 @@
 - 无官方移动端 App(本仓库即为其 Android 客户端)
 
 
-## 补充(2025-08-24):官方提供 14 套用户可选色板
+## 补充(2026-08-24):官方提供 14 套用户可选色板
 详见 ui-layout-notes.md 第五节。默认亮=scheme7(NodeLoc) 默认暗=scheme8(Classic);
 标准黑=scheme1。全部完整色值内嵌于 site.json,客户端可做"色板驱动"主题引擎。

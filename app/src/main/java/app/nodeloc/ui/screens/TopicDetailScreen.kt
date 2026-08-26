@@ -57,7 +57,7 @@ private fun initiallyExpanded(posts: List<PostDto>): Set<Long> = buildSet {
 }
 
 @Composable
-fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
+fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> Unit = {}) {
     val nc = LocalNodelocColors.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -78,6 +78,28 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
     var loadingMore by remember(args.id) { mutableStateOf(false) }
     var loadError by remember(args.id) { mutableStateOf<String?>(null) }
     var reloadToken by remember(args.id) { mutableIntStateOf(0) }
+
+    // 底部回复栏:输入、发送中与发送失败文案
+    var replyText by remember(args.id) { mutableStateOf("") }
+    var sending by remember(args.id) { mutableStateOf(false) }
+    var replyError by remember(args.id) { mutableStateOf<String?>(null) }
+
+    fun sendReply() {
+        val text = replyText.trim()
+        if (text.isEmpty() || sending) return
+        sending = true
+        replyError = null
+        scope.launch {
+            runCatching { DiscourseApi.createPost(args.id, text) }
+                .onSuccess {
+                    replyText = ""
+                    // 刷新楼层以显示新回复;保留登录态避免输入栏闪烁
+                    reloadToken++
+                }
+                .onFailure { replyError = it.message ?: "发送失败，请稍后再试" }
+            sending = false
+        }
+    }
 
     val loadedIds = remember(posts) { posts.mapTo(HashSet()) { it.id } }
     val canLoadMoreClassic = streamIds.any { it !in loadedIds }
@@ -181,7 +203,6 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
 
     LaunchedEffect(args.id, reloadToken) {
         state = DetailState.Loading
-        loggedIn = false
         posts = emptyList()
         streamIds = emptyList()
         opPost = null
@@ -377,39 +398,79 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
             }
         }
 
-        if (loggedIn) {
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 0.dp,
-                modifier = Modifier.navigationBarsPadding().imePadding(),
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OutlinedTextField(
-                        value = "",
-                        onValueChange = {},
-                        readOnly = true,
-                        placeholder = { Text("回复此话题…", color = nc.onSurfaceVariant) },
-                        shape = RoundedCornerShape(21.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = nc.outlineVariant,
-                            focusedBorderColor = nc.primary,
-                        ),
-                        modifier = Modifier.weight(1f).heightIn(min = 42.dp),
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    FilledIconButton(
-                        onClick = {},
-                        enabled = false,
-                        shape = CircleShape,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = nc.primary,
-                            contentColor = nc.onPrimary,
-                        ),
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 0.dp,
+            modifier = Modifier.navigationBarsPadding().imePadding(),
+        ) {
+            if (loggedIn) {
+                Column(Modifier.fillMaxWidth()) {
+                    replyError?.let { msg ->
+                        Text(
+                            msg,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
+                        )
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.Bottom,
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, "发送")
+                        OutlinedTextField(
+                            value = replyText,
+                            onValueChange = { replyText = it },
+                            placeholder = { Text("回复此话题…", color = nc.onSurfaceVariant) },
+                            shape = RoundedCornerShape(21.dp),
+                            maxLines = 5,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = nc.outlineVariant,
+                                focusedBorderColor = nc.primary,
+                            ),
+                            modifier = Modifier.weight(1f).heightIn(min = 42.dp),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        FilledIconButton(
+                            onClick = ::sendReply,
+                            enabled = !sending && replyText.isNotBlank(),
+                            shape = CircleShape,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = nc.primary,
+                                contentColor = nc.onPrimary,
+                            ),
+                            modifier = Modifier.padding(bottom = 2.dp),
+                        ) {
+                            if (sending) {
+                                CircularProgressIndicator(
+                                    color = nc.onPrimary,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            } else {
+                                Icon(Icons.AutoMirrored.Filled.Send, "发送")
+                            }
+                        }
+                    }
+                }
+            } else {
+                // 未登录:整条回复栏作为登录引导
+                Surface(
+                    onClick = onOpenLogin,
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.Lock, null, tint = nc.primary, modifier = Modifier.size(15.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "登录后即可回复",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = nc.primary,
+                        )
                     }
                 }
             }

@@ -222,4 +222,27 @@ object DiscourseApi {
     suspend fun replyHistory(postId: Long): PostReplyHistoryDto =
         get("/posts/" + postId + "/reply-history")
 
+    /**
+     * 在话题下发布回复(顶层)。需要登录态;失败时抛 [ApiException],
+     * message 为服务端文案(如频率限制、无权限)。
+     */
+    suspend fun createPost(topicId: Long, raw: String): Unit = withContext(Dispatchers.IO) {
+        val csrf = fetchCsrf()
+        val form = FormBody.Builder()
+            .add("topic_id", topicId.toString())
+            .add("raw", raw)
+            .build()
+        val req = Request.Builder()
+            .url(BASE + "/posts")
+            .header("X-Requested-With", "XMLHttpRequest")
+            .header("X-CSRF-Token", csrf)
+            .post(form)
+            .build()
+        client.newCall(req).execute().use { resp ->
+            val body = resp.body?.string()
+            if (!resp.isSuccessful || body == null) throw httpError(resp.code, body)
+            SessionStore.csrfToken = null
+        }
+    }
+
 }

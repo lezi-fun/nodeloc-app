@@ -47,7 +47,11 @@ fun AppRoot() {
     ) {
         val d = detailJson?.let { runCatching { DetailArgs.fromJson(it) }.getOrNull() }
         when {
-            d != null -> TopicDetailScreen(args = d, onBack = { detailJson = null })
+            d != null -> TopicDetailScreen(
+                args = d,
+                onBack = { detailJson = null },
+                onOpenLogin = { loginOpen = true },
+            )
             searchOpen -> SearchScreen(
                 onBack = { searchOpen = false },
                 onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() },

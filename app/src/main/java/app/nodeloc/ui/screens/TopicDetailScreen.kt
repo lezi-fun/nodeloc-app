@@ -235,7 +235,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = nc.onBackground)
             }
             Text(
-                args.title,
+                (state as? DetailState.Ready)?.detail?.title?.takeIf { it.isNotBlank() } ?: args.title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = nc.onBackground,

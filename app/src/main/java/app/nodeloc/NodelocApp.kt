@@ -33,5 +33,17 @@ class NodelocApp : Application(), ImageLoaderFactory {
                     add(GifDecoder.Factory())
                 }
             }
+            // 头像等站点图片持久缓存:内存 25% 可用堆 + 磁盘 64MB,冷启动直接命中
+            .memoryCache {
+                coil.memory.MemoryCache.Builder(this)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            .diskCache {
+                coil.disk.DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(64L * 1024 * 1024)
+                    .build()
+            }
             .build()
 }

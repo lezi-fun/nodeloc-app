@@ -2,7 +2,6 @@ package app.nodeloc.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -73,18 +71,6 @@ private sealed interface ListState {
     ) : ListState
 }
 
-private data class TopicFilter(val name: String, val color: Color? = null)
-
-private val topicFilters = listOf(
-    TopicFilter("全部"),
-    TopicFilter("互联网服务", Color(0xFF2CB2B5)),
-    TopicFilter("VPS", Color(0xFFE45735)),
-    TopicFilter("AI", Color(0xFF0088CC)),
-    TopicFilter("羊毛党", Color(0xFF0088CC)),
-    TopicFilter("数码与硬件", Color(0xFF3184C4)),
-    TopicFilter("优惠情报", Color(0xFFDD3C3C)),
-)
-
 @Composable
 fun TopicListScreen(
     onOpenTopic: (TopicDto) -> Unit,
@@ -98,7 +84,6 @@ fun TopicListScreen(
     var hasMore by remember { mutableStateOf(true) }
     var appending by remember { mutableStateOf(false) }
     var appendError by remember { mutableStateOf<String?>(null) }
-    var selectedFilter by remember { mutableIntStateOf(0) }
     // 官网行为:停留期间定期检查,有新话题时顶部出现绿色横幅
     var newCount by remember { mutableIntStateOf(0) }
 
@@ -155,15 +140,7 @@ fun TopicListScreen(
     }
 
     val ready = state as? ListState.Ready
-    val visibleTopics = remember(ready, selectedFilter) {
-        ready?.let { current ->
-            val filterName = topicFilters.getOrNull(selectedFilter)?.name
-            if (filterName.isNullOrBlank() || filterName == "全部") current.topics
-            else current.topics.filter { topic ->
-                current.cats[topic.categoryId]?.name == filterName || topic.title.contains(filterName, ignoreCase = true)
-            }
-        } ?: emptyList()
-    }
+    val visibleTopics = ready?.topics ?: emptyList()
     val listState = rememberLazyListState()
     // 基于真实渲染条数(含筛选与 footer)判断接近底部;appending 结束后若仍在底部会自动续载
     val nearEnd by remember {
@@ -211,8 +188,6 @@ fun TopicListScreen(
                 }
             }
         }
-        FilterStrip(selectedFilter = selectedFilter, onSelect = { selectedFilter = it })
-
         when (val s = state) {
             is ListState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 LoadingMark()
@@ -227,7 +202,7 @@ fun TopicListScreen(
             }
             is ListState.Ready -> if (visibleTopics.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(if (s.topics.isEmpty()) "暂无话题" else "该筛选暂无话题", color = nc.onSurfaceVariant)
+                    Text("暂无话题", color = nc.onSurfaceVariant)
                 }
             } else LazyColumn(
                 state = listState,
@@ -288,39 +263,6 @@ private fun OfficialTopBar(onOpenDrawer: () -> Unit, onOpenSearch: () -> Unit) {
         }
         IconButton(onClick = {}) {
             Icon(Icons.Filled.Notifications, contentDescription = "通知", tint = nc.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun FilterStrip(selectedFilter: Int, onSelect: (Int) -> Unit) {
-    val nc = LocalNodelocColors.current
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        topicFilters.forEachIndexed { index, filter ->
-            Surface(
-                onClick = { onSelect(index) },
-                shape = RoundedCornerShape(999.dp),
-                color = if (index == selectedFilter) nc.secondaryContainer else nc.surface,
-                tonalElevation = if (index == selectedFilter) 0.dp else 1.dp,
-            ) {
-                Row(
-                    Modifier.height(34.dp).padding(horizontal = 13.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    filter.color?.let { Box(Modifier.size(8.dp).background(it, CircleShape)) }
-                    Text(
-                        filter.name,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (index == selectedFilter) FontWeight.Bold else FontWeight.Medium,
-                        color = if (index == selectedFilter) nc.onSecondaryContainer else nc.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
-            }
         }
     }
 }

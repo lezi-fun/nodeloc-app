@@ -2,6 +2,13 @@ name: Build Release APK
 
 on:
   push:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号(如 v1.2.0),用于 APK/tag/Release 命名;留空则回退 commit 短哈希'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -19,6 +26,20 @@ jobs:
       - name: Resolve short commit hash
         id: sha
         run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      # 手动触发且填写了版本号时,APK/tag/Release 均以版本号命名
+      - name: Resolve release naming
+        id: rel
+        run: |
+          version="${{ github.event.inputs.version }}"
+          short="${{ steps.sha.outputs.short }}"
+          if [ -n "$version" ]; then
+            echo "name=$version" >> "$GITHUB_OUTPUT"
+            echo "tag=$version" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=$short" >> "$GITHUB_OUTPUT"
+            echo "tag=build-$short" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Detect Android project (skip until scaffold lands)
         id: guard
@@ -51,22 +72,23 @@ jobs:
         if: steps.guard.outputs.present == 'true'
         run: |
           mkdir -p dist
-          short="${{ steps.sha.outputs.short }}"
+          name="${{ steps.rel.outputs.name }}"
           for f in app/build/outputs/apk/release/*.apk; do
             base=$(basename "$f")
             abi=$(echo "$base" | sed -E 's/^app-(.+)-release\.apk$/\1/')
-            cp "$f" "dist/nodeloc-${abi}-${short}.apk"
+            cp "$f" "dist/nodeloc-${abi}-${name}.apk"
           done
           ls -la dist/
 
-      - name: Publish GitHub Release (title = short commit)
+      - name: Publish GitHub Release (title = version or short commit)
         if: steps.guard.outputs.present == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="build-${{ steps.sha.outputs.short }}"
+          TAG="${{ steps.rel.outputs.tag }}"
+          NAME="${{ steps.rel.outputs.name }}"
           gh release create "$TAG" \
-            --title "${{ steps.sha.outputs.short }}" \
+            --title "$NAME" \
             --notes "自动构建 · commit ${{ github.sha }}" \
             --target "${{ github.sha }}" \
             dist/*.apk \

@@ -24,24 +24,30 @@ import kotlinx.serialization.json.jsonPrimitive
 @Composable
 fun AppRoot() {
     var detailJson by rememberSaveable { mutableStateOf<String?>(null) }
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
     BackHandler(enabled = detailJson != null && !drawerState.isOpen) { detailJson = null }
+    BackHandler(enabled = searchOpen && detailJson == null && !drawerState.isOpen) { searchOpen = false }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = { NodeLocDrawer(onClose = { scope.launch { drawerState.close() } }) },
     ) {
         val d = detailJson?.let { runCatching { DetailArgs.fromJson(it) }.getOrNull() }
-        if (d == null) {
-            TopicListScreen(
-                onOpenDrawer = { scope.launch { drawerState.open() } },
+        when {
+            d != null -> TopicDetailScreen(args = d, onBack = { detailJson = null })
+            searchOpen -> SearchScreen(
+                onBack = { searchOpen = false },
                 onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() },
             )
-        } else {
-            TopicDetailScreen(args = d, onBack = { detailJson = null })
+            else -> TopicListScreen(
+                onOpenDrawer = { scope.launch { drawerState.open() } },
+                onOpenSearch = { searchOpen = true },
+                onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() },
+            )
         }
     }
 }

@@ -147,3 +147,24 @@ data class CategoryDto(
     val color: String = "0088CC",
     val slug: String = "",
 )
+
+/** /search.json 的响应,topics 结构与列表接口一致 */
+@Serializable
+data class SearchDto(
+    val topics: List<TopicDto> = emptyList(),
+    val posts: List<SearchPostDto> = emptyList(),
+    val users: List<UserDto> = emptyList(),
+    val categories: List<CategoryDto> = emptyList(),
+)
+
+/** 搜索命中帖子的匹配片段,按 topic_id 关联到话题行展示 */
+@Serializable
+data class SearchPostDto(
+    val id: Long = 0,
+    @SerialName("topic_id") val topicId: Long = 0,
+    val username: String = "",
+    @SerialName("avatar_template") val avatarTemplate: String? = null,
+    val blurb: String = "",
+    @SerialName("post_number") val postNumber: Int = 0,
+    @SerialName("created_at") val createdAt: String = "",
+)

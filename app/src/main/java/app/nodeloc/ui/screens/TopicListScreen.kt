@@ -86,6 +86,7 @@ private val topicFilters = listOf(
 fun TopicListScreen(
     onOpenTopic: (TopicDto) -> Unit,
     onOpenDrawer: () -> Unit = {},
+    onOpenSearch: () -> Unit = {},
 ) {
     val nc = LocalNodelocColors.current
     val scope = rememberCoroutineScope()
@@ -160,7 +161,7 @@ fun TopicListScreen(
     }
 
     Column(Modifier.fillMaxSize().background(nc.background)) {
-        OfficialTopBar(onOpenDrawer = onOpenDrawer)
+        OfficialTopBar(onOpenDrawer = onOpenDrawer, onOpenSearch = onOpenSearch)
         FilterStrip(selectedFilter = selectedFilter, onSelect = { selectedFilter = it })
 
         when (val s = state) {
@@ -217,7 +218,7 @@ fun TopicListScreen(
 }
 
 @Composable
-private fun OfficialTopBar(onOpenDrawer: () -> Unit) {
+private fun OfficialTopBar(onOpenDrawer: () -> Unit, onOpenSearch: () -> Unit) {
     val nc = LocalNodelocColors.current
     Row(
         Modifier.fillMaxWidth().height(56.dp).background(nc.headerBg).padding(horizontal = 10.dp),
@@ -233,7 +234,7 @@ private fun OfficialTopBar(onOpenDrawer: () -> Unit) {
                 modifier = Modifier.height(23.dp),
             )
         }
-        IconButton(onClick = {}) {
+        IconButton(onClick = onOpenSearch) {
             Icon(Icons.Filled.Search, contentDescription = "搜索", tint = nc.onSurfaceVariant)
         }
         IconButton(onClick = {}) {

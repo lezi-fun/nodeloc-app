@@ -36,7 +36,7 @@ object DiscourseApi {
             val req = Request.Builder().url(BASE + path).build()
             client.newCall(req).execute().use { resp ->
                 val body = resp.body?.string()
-                check(resp.isSuccessful && body != null) { "HTTP " + resp.code }
+                if (!resp.isSuccessful || body == null) throw httpError(resp.code)
                 json.decodeFromString(body)
             }
         }
@@ -70,6 +70,21 @@ object DiscourseApi {
     suspend fun site(): SiteDto =
         get("/site.json")
 
+    /** 全站搜索,query 会正确 URL 编码 */
+    suspend fun search(query: String): SearchDto =
+        withContext(Dispatchers.IO) {
+            val url = (BASE + "/search.json").toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("q", query)
+                .build()
+            val req = Request.Builder().url(url).build()
+            client.newCall(req).execute().use { resp ->
+                val body = resp.body?.string()
+                if (!resp.isSuccessful || body == null) throw httpError(resp.code)
+                json.decodeFromString(body)
+            }
+        }
+
     /** 按楼层 id 分块拉取(每块最多 20 条,Discourse 硬限制) */
     suspend fun posts(topicId: Long, ids: List<Long>): PostsChunkDto =
         withContext(Dispatchers.IO) {
@@ -81,7 +96,7 @@ object DiscourseApi {
             val req = Request.Builder().url(url).build()
             client.newCall(req).execute().use { resp ->
                 val body = resp.body?.string()
-                check(resp.isSuccessful && body != null) { "HTTP " + resp.code }
+                if (!resp.isSuccessful || body == null) throw httpError(resp.code)
                 json.decodeFromString(body)
             }
         }

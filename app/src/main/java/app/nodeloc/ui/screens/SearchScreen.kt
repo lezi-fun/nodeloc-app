@@ -137,7 +137,8 @@ fun SearchScreen(onBack: () -> Unit, onOpenTopic: (TopicDto) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var advJson by rememberSaveable { mutableStateOf("") }
     var adv by remember { mutableStateOf(AdvancedFilters.decode(advJson)) }
-    var advOpen by rememberSaveable { mutableStateOf(false) }
+    // 每次进入搜索页自动折叠(不跨页面保留展开状态)
+    var advOpen by remember { mutableStateOf(false) }
     var state by remember { mutableStateOf<SearchState>(SearchState.Idle) }
     var catMap by remember { mutableStateOf<Map<Int, CategoryDto>>(emptyMap()) }
 

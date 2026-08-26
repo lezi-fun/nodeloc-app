@@ -58,6 +58,7 @@ import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.LoadingMark
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.hexColor
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private sealed interface ListState {
@@ -96,6 +97,8 @@ fun TopicListScreen(
     var appending by remember { mutableStateOf(false) }
     var appendError by remember { mutableStateOf<String?>(null) }
     var selectedFilter by remember { mutableIntStateOf(0) }
+    // 官网行为:停留期间定期检查,有新话题时顶部出现绿色横幅
+    var newCount by remember { mutableIntStateOf(0) }
 
     suspend fun refresh() {
         state = ListState.Loading
@@ -136,6 +139,19 @@ fun TopicListScreen(
 
     LaunchedEffect(Unit) { refresh() }
 
+    // 每 60s 拉第一页对比,发现新话题则显示横幅;点击横幅后静默刷新
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60_000)
+            runCatching { DiscourseApi.latest(0) }.onSuccess { r ->
+                val cur = state as? ListState.Ready ?: return@onSuccess
+                val known = cur.topics.asSequence().map { it.id }.toHashSet()
+                val fresh = r.topicList.topics.count { it.id !in known }
+                if (fresh > 0) newCount = fresh
+            }
+        }
+    }
+
     val ready = state as? ListState.Ready
     val visibleTopics = remember(ready, selectedFilter) {
         ready?.let { current ->
@@ -162,6 +178,37 @@ fun TopicListScreen(
 
     Column(Modifier.fillMaxSize().background(nc.background)) {
         OfficialTopBar(onOpenDrawer = onOpenDrawer, onOpenSearch = onOpenSearch)
+        // 官网风格新话题横幅:浅绿底品牌绿字,点击静默刷新并回顶
+        if (newCount > 0) {
+            Surface(
+                onClick = {
+                    newCount = 0
+                    scope.launch {
+                        runCatching { DiscourseApi.latest(0) }.onSuccess { r ->
+                            page = 0
+                            hasMore = !r.topicList.moreTopicsUrl.isNullOrBlank()
+                            val cur = state as? ListState.Ready
+                            state = if (cur != null) {
+                                cur.copy(topics = r.topicList.topics, users = r.users.associateBy { it.id })
+                            } else {
+                                ListState.Ready(r.topicList.topics, r.users.associateBy { it.id }, SiteRepo.categories())
+                            }
+                            listState.scrollToItem(0)
+                        }
+                    }
+                },
+                color = nc.primary.copy(alpha = 0.15f),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Box(Modifier.fillMaxWidth().padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        "查看 $newCount 个新的或更新的话题",
+                        color = nc.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
         FilterStrip(selectedFilter = selectedFilter, onSelect = { selectedFilter = it })
 
         when (val s = state) {

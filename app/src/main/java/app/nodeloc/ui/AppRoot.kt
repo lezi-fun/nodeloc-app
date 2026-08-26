@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.nodeloc.data.model.TopicDto
 import app.nodeloc.ui.components.NodeLocDrawer
+import app.nodeloc.ui.screens.LoginScreen
 import app.nodeloc.ui.screens.SearchScreen
 import app.nodeloc.ui.screens.TopicDetailScreen
 import app.nodeloc.ui.screens.TopicListScreen
@@ -26,16 +27,23 @@ import kotlinx.serialization.json.jsonPrimitive
 fun AppRoot() {
     var detailJson by rememberSaveable { mutableStateOf<String?>(null) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var loginOpen by rememberSaveable { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
     BackHandler(enabled = detailJson != null && !drawerState.isOpen) { detailJson = null }
     BackHandler(enabled = searchOpen && detailJson == null && !drawerState.isOpen) { searchOpen = false }
+    BackHandler(enabled = loginOpen && detailJson == null && !searchOpen && !drawerState.isOpen) { loginOpen = false }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        drawerContent = { NodeLocDrawer(onClose = { scope.launch { drawerState.close() } }) },
+        drawerContent = {
+            NodeLocDrawer(
+                onClose = { scope.launch { drawerState.close() } },
+                onOpenLogin = { loginOpen = true },
+            )
+        },
     ) {
         val d = detailJson?.let { runCatching { DetailArgs.fromJson(it) }.getOrNull() }
         when {
@@ -44,6 +52,7 @@ fun AppRoot() {
                 onBack = { searchOpen = false },
                 onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() },
             )
+            loginOpen -> LoginScreen(onBack = { loginOpen = false })
             else -> TopicListScreen(
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenSearch = { searchOpen = true },

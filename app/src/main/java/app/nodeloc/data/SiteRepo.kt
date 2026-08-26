@@ -24,6 +24,13 @@ object SiteRepo {
     fun avatarUrl(template: String?, size: Int = 96): String? =
         absoluteUrl(template?.replace("{size}", size.toString()), DiscourseApi.BASE)
 
+    /**
+     * 动图头像:官网帖子流头像用 _2.gif(真动画),其余位置用 _2.png(单帧静态)。
+     * 仅当模板以 _2.png 结尾时替换,其余形态原样返回。
+     */
+    fun animatedAvatarUrl(template: String?, size: Int = 96): String? =
+        avatarUrl(template, size)?.let { if (it.endsWith("_2.png")) it.dropLast(4) + ".gif" else it }
+
     /** ISO8601 → 「x 分钟前」 */
     fun relativeTime(iso: String?): String {
         if (iso.isNullOrBlank()) return ""

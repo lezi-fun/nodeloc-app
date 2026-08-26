@@ -457,7 +457,8 @@ private fun PostItem(
                 }
                 Spacer(Modifier.width(4.dp))
             }
-            Avatar(post.username, SiteRepo.avatarUrl(post.avatarTemplate), if (depth > 0) 36.dp else 42.dp)
+            // 官网行为:帖子流头像为动图(_2.gif),列表等位置为静态(_2.png)
+            Avatar(post.username, SiteRepo.animatedAvatarUrl(post.avatarTemplate), if (depth > 0) 36.dp else 42.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -6,6 +6,7 @@ import app.nodeloc.data.model.NestedTopicDto
 import app.nodeloc.data.model.PostReplyHistoryDto
 import app.nodeloc.data.model.PostRepliesDto
 import app.nodeloc.data.model.PostsChunkDto
+import app.nodeloc.data.model.SearchDto
 import app.nodeloc.data.model.SiteDto
 import app.nodeloc.data.model.TopicDetailDto
 import kotlinx.coroutines.Dispatchers

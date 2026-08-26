@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.nodeloc.data.model.TopicDto
 import app.nodeloc.ui.components.NodeLocDrawer
+import app.nodeloc.ui.screens.SearchScreen
 import app.nodeloc.ui.screens.TopicDetailScreen
 import app.nodeloc.ui.screens.TopicListScreen
 import kotlinx.coroutines.launch

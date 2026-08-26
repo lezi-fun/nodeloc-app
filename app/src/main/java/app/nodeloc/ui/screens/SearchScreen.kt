@@ -75,7 +75,7 @@ fun SearchScreen(onBack: () -> Unit, onOpenTopic: (TopicDto) -> Unit) {
     var catMap by remember { mutableStateOf<Map<Int, CategoryDto>>(emptyMap()) }
 
     LaunchedEffect(Unit) {
-        catMap = runCatching { SiteRepo.categories().associateBy { it.id } }.getOrDefault(emptyMap())
+        catMap = runCatching { SiteRepo.categories() }.getOrDefault(emptyMap<Int, CategoryDto>())
         focusRequester.requestFocus()
     }
 
@@ -95,7 +95,7 @@ fun SearchScreen(onBack: () -> Unit, onOpenTopic: (TopicDto) -> Unit) {
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: ApiException) {
-                            state = SearchState.Failed(e.code, e.message)
+                            state = SearchState.Failed(e.code, e.message ?: "网络错误")
                         } catch (e: Throwable) {
                             state = SearchState.Failed(0, e.message ?: "网络错误")
                         }

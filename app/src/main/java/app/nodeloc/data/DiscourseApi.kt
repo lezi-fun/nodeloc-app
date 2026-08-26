@@ -36,7 +36,7 @@ object DiscourseApi {
             val req = Request.Builder().url(BASE + path).build()
             client.newCall(req).execute().use { resp ->
                 val body = resp.body?.string()
-                if (!resp.isSuccessful || body == null) throw httpError(resp.code)
+                if (!resp.isSuccessful || body == null) throw httpError(resp.code, body)
                 json.decodeFromString(body)
             }
         }
@@ -80,7 +80,7 @@ object DiscourseApi {
             val req = Request.Builder().url(url).build()
             client.newCall(req).execute().use { resp ->
                 val body = resp.body?.string()
-                if (!resp.isSuccessful || body == null) throw httpError(resp.code)
+                if (!resp.isSuccessful || body == null) throw httpError(resp.code, body)
                 json.decodeFromString(body)
             }
         }
@@ -96,7 +96,7 @@ object DiscourseApi {
             val req = Request.Builder().url(url).build()
             client.newCall(req).execute().use { resp ->
                 val body = resp.body?.string()
-                if (!resp.isSuccessful || body == null) throw httpError(resp.code)
+                if (!resp.isSuccessful || body == null) throw httpError(resp.code, body)
                 json.decodeFromString(body)
             }
         }

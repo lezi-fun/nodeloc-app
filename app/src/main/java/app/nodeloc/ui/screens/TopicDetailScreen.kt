@@ -20,8 +20,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.nodeloc.data.ApiException
 import app.nodeloc.data.DiscourseApi
 import app.nodeloc.data.SiteRepo
 import app.nodeloc.data.model.PostDto
@@ -38,7 +40,8 @@ import kotlin.math.min
 
 private sealed interface DetailState {
     data object Loading : DetailState
-    data class Error(val message: String) : DetailState
+    /** [code] 为 0 表示非 HTTP 语义错误(网络中断等) */
+    data class Error(val code: Int, val message: String) : DetailState
     data class Ready(val detail: TopicDetailDto, val nested: Boolean) : DetailState
 }
 
@@ -208,7 +211,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
                 streamIds = detail.postStream.stream.ifEmpty { detail.postStream.posts.map { it.id } }
             }
         } catch (error: Throwable) {
-            state = DetailState.Error(error.message ?: "网络错误")
+            state = DetailState.Error((error as? ApiException)?.code ?: 0, error.message ?: "网络错误")
         }
     }
 
@@ -270,11 +273,68 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit) {
         when (val current = state) {
             DetailState.Loading -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { LoadingMark() }
             is DetailState.Error -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(current.message, color = nc.onSurfaceVariant)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { reloadToken++ }) { Text("重试", color = nc.primary) }
-                        TextButton(onClick = onBack) { Text("返回列表", color = nc.primary) }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                ) {
+                    when {
+                        // 无权访问(含未登录):对齐官网 forbidden 页的锁图标与文案层级
+                        current.code == 403 || current.code == 401 -> {
+                            Box(
+                                Modifier.size(76.dp).background(nc.secondaryContainer, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Filled.Lock, contentDescription = null, tint = nc.primary, modifier = Modifier.size(32.dp))
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                if (current.code == 401) "请先登录" else "无权访问该话题",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = nc.onBackground,
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                current.message + "\n该话题可能需要登录或更高的会员等级才能查看",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = nc.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(Modifier.height(20.dp))
+                            TextButton(onClick = onBack) { Text("返回列表", color = nc.primary) }
+                        }
+                        // 不存在或已删除:对齐官网 not_found 页文案
+                        current.code == 404 -> {
+                            Box(
+                                Modifier.size(76.dp).background(nc.surfaceVariant, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Filled.Info, contentDescription = null, tint = nc.onSurfaceVariant, modifier = Modifier.size(30.dp))
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                "找不到页面",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = nc.onBackground,
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "该话题不存在、已被删除或链接有误",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = nc.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(Modifier.height(20.dp))
+                            TextButton(onClick = onBack) { Text("返回列表", color = nc.primary) }
+                        }
+                        else -> {
+                            Text(current.message, color = nc.onSurfaceVariant)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { reloadToken++ }) { Text("重试", color = nc.primary) }
+                                TextButton(onClick = onBack) { Text("返回列表", color = nc.primary) }
+                            }
+                        }
                     }
                 }
             }

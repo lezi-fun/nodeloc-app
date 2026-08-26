@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.nodeloc.R
 import app.nodeloc.data.DiscourseApi
+import app.nodeloc.data.SessionRepo
 import app.nodeloc.data.SiteRepo
 import app.nodeloc.data.model.CategoryDto
 import app.nodeloc.data.model.TopicDto
@@ -348,12 +350,15 @@ private fun TopicRow(t: TopicDto, op: UserDto?, cat: CategoryDto?, onClick: () -
                         Spacer(Modifier.width(3.dp))
                     }
                     if (t.hasReadPermissionRestriction) {
-                        // 官网 lc-lock 线框锁:有权限绿色 #4CAF50,无权限金色 #FF9800;
-                        // 客户端暂无登录态,等同未登录,统一金色
+                        // 官网 lc-lock 线框锁:未登录统一金色 #FF9800;
+                        // 登录后当前用户等级达标为绿色 #4CAF50,不达标仍为金色
+                        val me = SessionRepo.currentUser.collectAsState().value
+                        val allowed = me != null && t.readPermissionTrustLevel != null &&
+                            me.trustLevel >= t.readPermissionTrustLevel!!
                         Icon(
                             painter = painterResource(R.drawable.ic_lock_lc),
-                            contentDescription = "需要更高信任等级",
-                            tint = Color(0xFFFF9800),
+                            contentDescription = if (allowed) "信任等级达标" else "需要更高信任等级",
+                            tint = if (allowed) Color(0xFF4CAF50) else Color(0xFFFF9800),
                             modifier = Modifier.size(14.dp),
                         )
                         Spacer(Modifier.width(3.dp))

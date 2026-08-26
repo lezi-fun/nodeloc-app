@@ -1,7 +1,5 @@
 package app.nodeloc.ui.components
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,20 +7,28 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +42,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -49,63 +56,70 @@ import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
 
-private val SystemEmojiSize = 20.dp
-private val CustomEmojiSize = 70.dp
+/** 与官网 img.emoji 规则一致:所有表情(系统/自定义)均为行内 20px */
+private val EmojiSize = 20.dp
 
 private sealed interface ParagraphPart {
     data class Inline(val element: Element) : ParagraphPart
-    data class Image(val element: Element, val href: String?) : ParagraphPart
+    data class Image(val element: Element) : ParagraphPart
 }
 
 /** Discourse cooked HTML → Compose 富文本，按网页规则区分系统 emoji、自定义表情与正文图片。 */
 @Composable
 fun CookedText(html: String, modifier: Modifier = Modifier) {
     val body = remember(html) { Jsoup.parseBodyFragment(html, DiscourseApi.BASE).body() }
+    var previewUrl by remember { mutableStateOf<String?>(null) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        body.childNodes().forEach { RenderBlock(it) }
+        body.childNodes().forEach { RenderBlock(it, onPreview = { previewUrl = it }) }
     }
+    previewUrl?.let { url -> ImagePreviewDialog(url, onDismiss = { previewUrl = null }) }
 }
 
 @Composable
-private fun RenderBlock(node: Node) {
+private fun RenderBlock(node: Node, onPreview: (String) -> Unit) {
     val nc = MaterialTheme.colorScheme
     when (node) {
         is TextNode -> if (node.text().isNotBlank()) {
             Text(node.text().trim(), style = MaterialTheme.typography.bodyMedium, color = nc.onSurface)
         }
-        is Element -> when (node.tagName().lowercase()) {
-            "p" -> Paragraph(node)
-            "img" -> if (node.isEmoji()) InlineFlow(Element("span").appendChild(node.clone())) else ContentImage(node)
-            "a" -> node.nonEmojiImage()?.let { ContentImage(it, node.attr("href")) } ?: LinkBlock(node)
-            "blockquote", "aside" -> QuoteBlock(node)
-            "pre" -> CodeBlock(node)
-            "ul", "ol" -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                node.children().forEachIndexed { i, li ->
-                    Row {
-                        Text(
-                            if (node.tagName() == "ol") "${i + 1}. " else "• ",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = nc.onSurfaceVariant,
-                        )
-                        Column { li.childNodes().forEach { RenderBlock(it) } }
+        is Element -> when {
+            // 官网信任等级限制提示区块:锁图标 + 文案居中卡片
+            node.hasClass("read-permission-notice") -> PermissionNotice(node)
+            else -> when (node.tagName().lowercase()) {
+                "p" -> Paragraph(node, onPreview)
+                "img" -> if (node.isEmoji()) InlineFlow(Element("span").appendChild(node.clone())) else ContentImage(node, onPreview)
+                "a" -> node.nonEmojiImage()?.let { ContentImage(it, onPreview) } ?: LinkBlock(node)
+                "blockquote", "aside" -> QuoteBlock(node, onPreview)
+                "pre" -> CodeBlock(node)
+                "ul", "ol" -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    node.children().forEachIndexed { i, li ->
+                        Row {
+                            Text(
+                                if (node.tagName() == "ol") "${i + 1}. " else "• ",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = nc.onSurfaceVariant,
+                            )
+                            Column { li.childNodes().forEach { RenderBlock(it, onPreview) } }
+                        }
                     }
                 }
+                "hr" -> Box(Modifier.fillMaxWidth().height(1.dp).background(nc.outlineVariant))
+                "h1", "h2", "h3", "h4", "h5", "h6" -> Text(
+                    node.text(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = nc.onBackground,
+                )
+                "br" -> Unit
+                else -> if (node.childNodeSize() > 0 || node.text().isNotBlank()) InlineFlow(node)
             }
-            "hr" -> Box(Modifier.fillMaxWidth().height(1.dp).background(nc.outlineVariant))
-            "h1", "h2", "h3", "h4", "h5", "h6" -> Text(
-                node.text(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = nc.onBackground,
-            )
-            "br" -> Unit
-            else -> if (node.childNodeSize() > 0 || node.text().isNotBlank()) InlineFlow(node)
         }
+        else -> Unit
     }
 }
 
 @Composable
-private fun Paragraph(element: Element) {
+private fun Paragraph(element: Element, onPreview: (String) -> Unit) {
     val parts = remember(element) {
         buildList {
             var inline = Element("span")
@@ -124,8 +138,7 @@ private fun Paragraph(element: Element) {
                 }
                 if (image != null) {
                     flushInline()
-                    val href = (child as? Element)?.takeIf { it.tagName().equals("a", true) }?.attr("href")
-                    add(ParagraphPart.Image(image, href))
+                    add(ParagraphPart.Image(image))
                 } else {
                     inline.appendChild(child.clone())
                 }
@@ -137,7 +150,7 @@ private fun Paragraph(element: Element) {
         parts.forEach { part ->
             when (part) {
                 is ParagraphPart.Inline -> InlineFlow(part.element)
-                is ParagraphPart.Image -> ContentImage(part.element, part.href)
+                is ParagraphPart.Image -> ContentImage(part.element, onPreview)
             }
         }
     }
@@ -167,15 +180,14 @@ private fun InlineFlow(element: Element) {
                         "img" -> n.attr("src").takeIf { it.isNotBlank() }?.let { src ->
                             val url = resolveUrl(src)
                             if (url != null) {
-                                val size = if (n.hasClass("emoji-custom")) CustomEmojiSize else SystemEmojiSize
                                 val key = "emoji-${inline.size}"
                                 inline[key] = InlineTextContent(
-                                    Placeholder(size.value.sp, size.value.sp, PlaceholderVerticalAlign.TextCenter),
+                                    Placeholder(EmojiSize.value.sp, EmojiSize.value.sp, PlaceholderVerticalAlign.TextCenter),
                                 ) {
                                     AsyncImage(
                                         model = url,
                                         contentDescription = n.attr("alt").ifBlank { null },
-                                        modifier = Modifier.width(size).height(size),
+                                        modifier = Modifier.width(EmojiSize).height(EmojiSize),
                                         contentScale = ContentScale.Fit,
                                     )
                                 }
@@ -203,29 +215,55 @@ private fun InlineFlow(element: Element) {
 }
 
 @Composable
-private fun ContentImage(node: Element, href: String? = null) {
+private fun ContentImage(node: Element, onPreview: (String) -> Unit) {
     val url = resolveUrl(node.attr("src")) ?: return
     val declaredWidth = node.attr("width").toFloatOrNull()?.takeIf { it > 0f }
     val declaredHeight = node.attr("height").toFloatOrNull()?.takeIf { it > 0f }
     val ratio = if (declaredWidth != null && declaredHeight != null) declaredWidth / declaredHeight else null
-    val context = LocalContext.current
 
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val imageWidth = declaredWidth?.dp?.coerceAtMost(maxWidth) ?: maxWidth
-        val imageModifier = Modifier
-            .width(imageWidth)
-            .then(if (ratio != null) Modifier.aspectRatio(ratio) else Modifier.wrapContentHeight())
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(enabled = !href.isNullOrBlank()) {
-                val target = href?.let(::resolveUrl) ?: return@clickable
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target))) }
-            }
         AsyncImage(
             model = url,
             contentDescription = node.attr("alt").ifBlank { null },
-            modifier = imageModifier,
+            modifier = Modifier
+                .width(imageWidth)
+                .then(if (ratio != null) Modifier.aspectRatio(ratio) else Modifier.wrapContentHeight())
+                .clip(RoundedCornerShape(8.dp))
+                // 与官网 lightbox 一致:点击在应用内放大查看,而非打开外部浏览器
+                .clickable { onPreview(url) },
             contentScale = ContentScale.Fit,
         )
+    }
+}
+
+/** 官网 read-permission-notice 区块:信任等级不足,锁图标与文案居中于圆角卡片 */
+@Composable
+private fun PermissionNotice(node: Element) {
+    val nc = MaterialTheme.colorScheme
+    val text = remember(node) {
+        node.selectFirst(".read-permission-notice__text")?.text()?.trim().takeUnless { it.isNullOrBlank() }
+            ?: node.text().trim()
+    }
+    Surface(shape = RoundedCornerShape(12.dp), color = nc.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 28.dp),
+        ) {
+            Icon(
+                Icons.Filled.Lock,
+                contentDescription = null,
+                tint = nc.onSurfaceVariant.copy(alpha = 0.55f),
+                modifier = Modifier.size(36.dp),
+            )
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = nc.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
@@ -240,7 +278,7 @@ private fun LinkBlock(node: Element) {
             .clip(RoundedCornerShape(8.dp))
             .background(nc.secondaryContainer.copy(alpha = 0.55f))
             .clickable(enabled = href.isNotBlank()) {
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(href))) }
+                runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(href))) }
             }
             .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
@@ -256,7 +294,7 @@ private fun LinkBlock(node: Element) {
 }
 
 @Composable
-private fun QuoteBlock(node: Element) {
+private fun QuoteBlock(node: Element, onPreview: (String) -> Unit) {
     val nc = MaterialTheme.colorScheme
     val title = node.selectFirst(".title")?.text()?.trim()
     Surface(shape = RoundedCornerShape(12.dp), color = nc.surfaceVariant) {
@@ -267,7 +305,7 @@ private fun QuoteBlock(node: Element) {
             Column(Modifier.padding(top = if (title.isNullOrBlank()) 0.dp else 4.dp)) {
                 node.childNodes().forEach { child ->
                     if (child is Element && child.className().contains("title")) return@forEach
-                    RenderBlock(child)
+                    RenderBlock(child, onPreview)
                 }
             }
         }

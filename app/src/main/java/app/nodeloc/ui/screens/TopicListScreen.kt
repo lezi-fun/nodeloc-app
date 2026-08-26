@@ -34,13 +34,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -146,12 +146,17 @@ fun TopicListScreen(
         } ?: emptyList()
     }
     val listState = rememberLazyListState()
-    LaunchedEffect(listState, ready?.topics?.size) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
-            .collect { idx ->
-                val s = ready ?: return@collect
-                if (hasMore && !appending && idx >= s.topics.size - 4) appendMore(s)
-            }
+    // 基于真实渲染条数(含筛选与 footer)判断接近底部;appending 结束后若仍在底部会自动续载
+    val nearEnd by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            info.totalItemsCount > 0 && lastVisible >= info.totalItemsCount - 5
+        }
+    }
+    LaunchedEffect(nearEnd, ready, hasMore, appending, appendError) {
+        // appendError 非空时停下等待手动重试,避免失败后无限循环请求
+        if (nearEnd && hasMore && !appending && appendError == null) ready?.let(::appendMore)
     }
 
     Column(Modifier.fillMaxSize().background(nc.background)) {
@@ -198,7 +203,7 @@ fun TopicListScreen(
                             )
                         } else if (!appendError.isNullOrBlank()) {
                             Text(appendError!!, style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant)
-                            TextButton(onClick = { appendMore(s) }) { Text("重试加载", color = nc.primary) }
+                            TextButton(onClick = { appendError = null; appendMore(s) }) { Text("重试加载", color = nc.primary) }
                         } else if (hasMore) {
                             TextButton(onClick = { appendMore(s) }) { Text("继续加载", color = nc.primary) }
                         } else {

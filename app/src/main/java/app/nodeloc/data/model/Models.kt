@@ -23,6 +23,35 @@ data class UserDto(
     @SerialName("avatar_template") val avatarTemplate: String? = null,
 )
 
+/** /session/current.json 与登录成功返回的当前用户 */
+@Serializable
+data class CurrentUserDto(
+    val id: Int,
+    val username: String,
+    @SerialName("avatar_template") val avatarTemplate: String? = null,
+    @SerialName("trust_level") val trustLevel: Int = 0,
+    @SerialName("unread_notifications") val unreadNotifications: Int = 0,
+    @SerialName("unread_high_priority_notifications") val unreadHighPriorityNotifications: Int = 0,
+    val admin: Boolean = false,
+    val moderator: Boolean = false,
+)
+
+@Serializable
+data class CurrentSessionDto(@SerialName("current_user") val currentUser: CurrentUserDto? = null)
+
+/** POST /session 的响应:成功含 user;失败含 error;需 2FA 时含 second_factor_* 字段 */
+@Serializable
+data class SessionResponseDto(
+    val user: CurrentUserDto? = null,
+    val error: String? = null,
+    @SerialName("second_factor_required") val secondFactorRequired: Boolean = false,
+    @SerialName("second_factor_token") val secondFactorToken: String? = null,
+    @SerialName("second_factor_method") val secondFactorMethod: Int? = null,
+)
+
+@Serializable
+data class CsrfDto(val csrf: String = "")
+
 @Serializable
 data class PosterRef(val user_id: Int = 0)
 

@@ -12,6 +12,10 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 class ApiException(val code: Int, val errorType: String? = null, message: String) : RuntimeException(message)
 
+/** 登录时服务端要求两步验证(TOTP),[secondFactorToken] 为二次提交所需临时凭据 */
+class SecondFactorRequiredException(val secondFactorToken: String) :
+    RuntimeException("该账号已开启两步验证")
+
 private val errorJson = Json { ignoreUnknownKeys = true }
 
 /** 由 HTTP 状态码与响应体构造语义化异常,body 形如 {"errors":[…],"error_type":"…"} */

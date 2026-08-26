@@ -53,7 +53,7 @@ private class StrokeSpec(
  * 因此不受官方 <g transform> 平移或 viewBox 留白影响，始终视觉居中。
  */
 @Composable
-fun LoadingMark(modifier: Modifier = Modifier, height: Dp = 64.dp) {
+fun LoadingMark(modifier: Modifier = Modifier, height: Dp = 44.dp) {
     var elapsedMs by remember { mutableLongStateOf(0L) }
     val (specs, bounds) = remember {
         fun spec(data: String, color: Long, delayMs: Long): StrokeSpec {

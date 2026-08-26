@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
@@ -302,11 +301,13 @@ private fun TopicRow(t: TopicDto, op: UserDto?, cat: CategoryDto?, onClick: () -
                         Spacer(Modifier.width(3.dp))
                     }
                     if (t.hasReadPermissionRestriction) {
+                        // 官网 lc-lock 线框锁:有权限绿色 #4CAF50,无权限金色 #FF9800;
+                        // 客户端暂无登录态,等同未登录,统一金色
                         Icon(
-                            Icons.Filled.Lock,
+                            painter = painterResource(R.drawable.ic_lock_lc),
                             contentDescription = "需要更高信任等级",
-                            tint = nc.onSurfaceVariant,
-                            modifier = Modifier.size(13.dp),
+                            tint = Color(0xFFFF9800),
+                            modifier = Modifier.size(14.dp),
                         )
                         Spacer(Modifier.width(3.dp))
                     }

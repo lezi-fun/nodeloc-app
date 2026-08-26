@@ -2,6 +2,7 @@ package app.nodeloc.ui.components
 
 import android.graphics.Path
 import android.graphics.PathMeasure
+import android.graphics.RectF
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
@@ -27,35 +28,61 @@ import androidx.core.graphics.PathParser
 import kotlinx.coroutines.isActive
 import kotlin.math.min
 
-private const val LogoWidth = 960f
-private const val LogoHeight = 280f
+/** 官方 SVG 描边宽度 */
 private const val StrokeWidth = 26f
 private const val DrawDurationMs = 400L
 private const val FinalDelayMs = 3_200L
+/** 官方 SVG 的 <g transform="translate(30,0)"> */
+private const val OfficialGroupOffsetX = 30f
 
-private data class DrawPath(val path: Path, val color: Color, val delayMs: Long)
+private class StrokeSpec(
+    val path: Path,
+    val measure: PathMeasure,
+    val color: Color,
+    val delayMs: Long,
+) {
+    val length: Float = measure.length
+}
 
 /**
  * NodeLoc 官网字标的原生 Compose 渲染版本。
  *
- * 资源本身保留在 assets/loading.svg 作为官方来源，但不再把 CSS 动画交给
- * WebView 解释，避免不同 Android System WebView 对 pathLength 和 keyframes 的差异。
+ * 官方 assets/loading.svg 依赖 CSS keyframes 驱动 stroke-dashoffset，
+ * 不同 WebView 表现不一致，这里用 PathMeasure 做等价的路径裁剪绘制；
+ * 绘制区域取全部笔画（含描边）的实际包围盒并以此居中，
+ * 因此不受官方 <g transform> 平移或 viewBox 留白影响，始终视觉居中。
  */
 @Composable
 fun LoadingMark(modifier: Modifier = Modifier, height: Dp = 64.dp) {
     var elapsedMs by remember { mutableLongStateOf(0L) }
-    val paths = remember {
-        listOf(
-            svgPath("M0,222 L0,172 A50,50 0 0 1 100,172 L100,222", 0xFF009966, 0),
-            svgPath("M150,172 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0", 0xFF009966, 400),
-            svgPath("M300,172 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0", 0xFF009966, 800),
-            svgPath("M400,58 L400,222", 0xFF009966, 1_200),
-            svgPath("M450,172 L550,172", 0xFF009966, 1_600),
-            svgPath("M550,172 A50,50 0 1 0 541,201", 0xFF009966, 2_000),
-            svgPath("M600,58 L600,222", 0xFFFF9933, 2_400),
-            svgPath("M650,172 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0", 0xFFFF9933, 2_800),
-            svgPath("M891,143 A50,50 0 1 0 891,201", 0xFFFF9933, 3_200),
+    val (specs, bounds) = remember {
+        fun spec(data: String, color: Long, delayMs: Long): StrokeSpec {
+            val path =
+                requireNotNull(PathParser.createPathFromPathData(data)) { "Invalid NodeLoc logo path" }
+            path.offset(OfficialGroupOffsetX, 0f)
+            return StrokeSpec(path, PathMeasure(path, false), Color(color), delayMs)
+        }
+        // 路径数据逐条对应 assets/loading.svg，延迟对应其 animation-delay
+        val list = listOf(
+            spec("M0,222 L0,172 A50,50 0 0 1 100,172 L100,222", 0xFF009966, 0),
+            spec("M150,172 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0", 0xFF009966, 400),
+            spec("M300,172 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0", 0xFF009966, 800),
+            spec("M400,58 L400,222", 0xFF009966, 1_200),
+            spec("M450,172 L550,172", 0xFF009966, 1_600),
+            spec("M550,172 A50,50 0 1 0 541,201", 0xFF009966, 2_000),
+            spec("M600,58 L600,222", 0xFFFF9933, 2_400),
+            spec("M650,172 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0", 0xFFFF9933, 2_800),
+            spec("M891,143 A50,50 0 1 0 891,201", 0xFFFF9933, 3_200),
         )
+        val ink = RectF()
+        val tmp = RectF()
+        list.forEach { spec ->
+            spec.path.computeBounds(tmp, true)
+            ink.union(tmp)
+        }
+        // 外扩半描边宽度（圆头笔画半径），再留 1px 抗锯齿余量
+        ink.inset(-StrokeWidth / 2f - 1f, -StrokeWidth / 2f - 1f)
+        list to ink
     }
 
     LaunchedEffect(Unit) {
@@ -70,24 +97,22 @@ fun LoadingMark(modifier: Modifier = Modifier, height: Dp = 64.dp) {
     Canvas(
         modifier = modifier
             .height(height)
-            .aspectRatio(LogoWidth / LogoHeight)
+            .aspectRatio(bounds.width() / bounds.height())
             .semantics { contentDescription = "加载中" },
     ) {
-        val scale = min(size.width / LogoWidth, size.height / LogoHeight)
-        val left = (size.width - LogoWidth * scale) / 2f
-        val top = (size.height - LogoHeight * scale) / 2f
-
+        val scale = min(size.width / bounds.width(), size.height / bounds.height())
         withTransform({
-            translate(left, top)
+            translate(
+                size.width / 2f - scale * bounds.centerX(),
+                size.height / 2f - scale * bounds.centerY(),
+            )
             scale(scale, scale)
-            translate(30f, 0f)
         }) {
-            paths.forEach { spec ->
+            val segment = Path()
+            specs.forEach { spec ->
                 val progress = ((elapsedMs - spec.delayMs).toFloat() / DrawDurationMs).coerceIn(0f, 1f)
                 if (progress <= 0f) return@forEach
-                val measure = PathMeasure(spec.path, false)
-                val segment = Path()
-                measure.getSegment(0f, measure.length * progress, segment, true)
+                spec.measure.getSegment(0f, spec.length * progress, segment, true)
                 drawPath(
                     segment.asComposePath(),
                     color = spec.color,
@@ -97,14 +122,8 @@ fun LoadingMark(modifier: Modifier = Modifier, height: Dp = 64.dp) {
                         join = StrokeJoin.Round,
                     ),
                 )
+                segment.rewind()
             }
         }
     }
 }
-
-private fun svgPath(data: String, color: Long, delayMs: Long): DrawPath =
-    DrawPath(
-        path = requireNotNull(PathParser.createPathFromPathData(data)) { "Invalid NodeLoc logo path" },
-        color = Color(color),
-        delayMs = delayMs,
-    )

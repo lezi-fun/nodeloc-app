@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,17 +45,28 @@ import app.nodeloc.data.model.CategoryDto
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.absoluteUrl
 import app.nodeloc.util.hexColor
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.decode.SvgDecoder
 
-/** 抽屉展示的节点(分类),与官网侧栏主节点一致 */
-private val drawerCategories = listOf("互联网服务", "科技与创作", "数码与硬件", "生活与兴趣", "活动与互动")
-
+/** 抽屉展示的节点(分类):取站点上传了图标的节点,按官网侧栏顺序展示 */
 @Composable
 fun NodeLocDrawer(onClose: () -> Unit) {
     val nc = LocalNodelocColors.current
-    var cats by remember { mutableStateOf<Map<Int, CategoryDto>>(emptyMap()) }
+    val context = LocalContext.current
+    // 节点图标多为 .svg,默认解码器不识别,需挂 SvgDecoder
+    val logoLoader = remember {
+        ImageLoader.Builder(context)
+            .components { add(SvgDecoder(context)) }
+            .build()
+    }
+    var nodes by remember { mutableStateOf<List<CategoryDto>>(emptyList()) }
     LaunchedEffect(Unit) {
-        cats = runCatching { SiteRepo.categories() }.getOrDefault(emptyMap())
+        nodes = runCatching { SiteRepo.categories().values.toList() }
+            .getOrDefault(emptyList())
+            .filter { !it.uploadedLogo?.url.isNullOrBlank() }
+            .sortedBy { it.position }
+            .take(14)
     }
 
     ModalDrawerSheet(
@@ -97,12 +109,12 @@ fun NodeLocDrawer(onClose: () -> Unit) {
             DrawerEntry("开放登录", Icons.Filled.Info, onClose)
 
             DrawerSectionTitle("分类")
-            drawerCategories.forEach { name ->
-                val cat = cats.values.firstOrNull { it.name == name }
+            nodes.forEach { cat ->
                 CategoryEntry(
-                    text = name,
-                    color = cat?.let { hexColor(it.color) } ?: Color.Gray,
-                    logoUrl = cat?.uploadedLogo?.url?.let { absoluteUrl(it, DiscourseApi.BASE) },
+                    text = cat.name,
+                    color = hexColor(cat.color),
+                    logoUrl = cat.uploadedLogo?.url?.let { absoluteUrl(it, DiscourseApi.BASE) },
+                    imageLoader = logoLoader,
                     onClick = onClose,
                 )
             }
@@ -136,9 +148,15 @@ private fun DrawerEntry(text: String, icon: ImageVector, onClick: () -> Unit) {
     )
 }
 
-/** 节点条目:优先显示站点上传的分类图标,缺失时回退到分类色点 */
+/** 节点条目:显示站点上传的分类图标(含 svg),缺失时回退到分类色点 */
 @Composable
-private fun CategoryEntry(text: String, color: Color, logoUrl: String?, onClick: () -> Unit) {
+private fun CategoryEntry(
+    text: String,
+    color: Color,
+    logoUrl: String?,
+    imageLoader: ImageLoader,
+    onClick: () -> Unit,
+) {
     val nc = LocalNodelocColors.current
     NavigationDrawerItem(
         label = { Text(text) },
@@ -149,6 +167,7 @@ private fun CategoryEntry(text: String, color: Color, logoUrl: String?, onClick:
                 AsyncImage(
                     model = logoUrl,
                     contentDescription = null,
+                    imageLoader = imageLoader,
                     modifier = Modifier.size(26.dp),
                     contentScale = ContentScale.Fit,
                 )

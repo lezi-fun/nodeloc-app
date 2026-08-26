@@ -149,6 +149,8 @@ data class CategoryDto(
     val name: String = "",
     val color: String = "0088CC",
     val slug: String = "",
+    /** 侧栏展示顺序,与官网一致 */
+    val position: Int = 0,
     /** 分类自定义图标(站点为多数节点上传了 svg/png logo) */
     @SerialName("uploaded_logo") val uploadedLogo: UploadedLogoDto? = null,
 )

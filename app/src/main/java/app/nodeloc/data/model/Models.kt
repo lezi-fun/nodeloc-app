@@ -38,6 +38,9 @@ data class TopicDto(
     val pinned: Boolean = false,
     @SerialName("pinned_globally") val pinnedGlobally: Boolean = false,
     @SerialName("bumped_at") val bumpedAt: String = "",
+    /** 该话题需要指定信任等级才能阅读正文 */
+    @SerialName("has_read_permission_restriction") val hasReadPermissionRestriction: Boolean = false,
+    @SerialName("read_permission_trust_level") val readPermissionTrustLevel: Int? = null,
     val posters: List<PosterRef> = emptyList(),
 ) {
     val isPinned get() = pinned || pinnedGlobally
@@ -146,6 +149,15 @@ data class CategoryDto(
     val name: String = "",
     val color: String = "0088CC",
     val slug: String = "",
+    /** 分类自定义图标(站点为多数节点上传了 svg/png logo) */
+    @SerialName("uploaded_logo") val uploadedLogo: UploadedLogoDto? = null,
+)
+
+@Serializable
+data class UploadedLogoDto(
+    val url: String = "",
+    val width: Int = 0,
+    val height: Int = 0,
 )
 
 /** /search.json 的响应,topics 结构与列表接口一致 */

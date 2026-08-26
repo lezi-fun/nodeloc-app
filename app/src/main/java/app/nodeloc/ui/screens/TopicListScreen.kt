@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
@@ -290,14 +291,24 @@ private fun TopicRow(t: TopicDto, op: UserDto?, cat: CategoryDto?, onClick: () -
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 与官网一致:置顶显示图钉,信任等级限制显示锁
                     if (t.isPinned) {
-                        Text(
-                            "置顶",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFF1592A),
-                            modifier = Modifier.padding(end = 7.dp),
+                        Icon(
+                            painter = painterResource(R.drawable.ic_pin),
+                            contentDescription = "置顶",
+                            tint = Color(0xFFF1592A),
+                            modifier = Modifier.size(14.dp),
                         )
+                        Spacer(Modifier.width(3.dp))
+                    }
+                    if (t.hasReadPermissionRestriction) {
+                        Icon(
+                            Icons.Filled.Lock,
+                            contentDescription = "需要更高信任等级",
+                            tint = nc.onSurfaceVariant,
+                            modifier = Modifier.size(13.dp),
+                        )
+                        Spacer(Modifier.width(3.dp))
                     }
                     Text(
                         t.title,

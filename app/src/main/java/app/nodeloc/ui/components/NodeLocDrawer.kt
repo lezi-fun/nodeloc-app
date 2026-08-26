@@ -24,19 +24,39 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.nodeloc.R
+import app.nodeloc.data.DiscourseApi
+import app.nodeloc.data.SiteRepo
+import app.nodeloc.data.model.CategoryDto
 import app.nodeloc.ui.theme.LocalNodelocColors
+import app.nodeloc.util.absoluteUrl
+import app.nodeloc.util.hexColor
+import coil.compose.AsyncImage
+
+/** 抽屉展示的节点(分类),与官网侧栏主节点一致 */
+private val drawerCategories = listOf("互联网服务", "科技与创作", "数码与硬件", "生活与兴趣", "活动与互动")
 
 @Composable
 fun NodeLocDrawer(onClose: () -> Unit) {
     val nc = LocalNodelocColors.current
+    var cats by remember { mutableStateOf<Map<Int, CategoryDto>>(emptyMap()) }
+    LaunchedEffect(Unit) {
+        cats = runCatching { SiteRepo.categories() }.getOrDefault(emptyMap())
+    }
+
     ModalDrawerSheet(
         modifier = Modifier.fillMaxWidth(0.86f),
         drawerContainerColor = nc.surface,
@@ -77,11 +97,15 @@ fun NodeLocDrawer(onClose: () -> Unit) {
             DrawerEntry("开放登录", Icons.Filled.Info, onClose)
 
             DrawerSectionTitle("分类")
-            CategoryEntry("互联网服务", Color(0xFF2CB2B5), onClose)
-            CategoryEntry("科技与创作", Color(0xFF826026), onClose)
-            CategoryEntry("数码与硬件", Color(0xFF3184C4), onClose)
-            CategoryEntry("生活与兴趣", Color(0xFF549447), onClose)
-            CategoryEntry("活动与互动", Color(0xFFF1592A), onClose)
+            drawerCategories.forEach { name ->
+                val cat = cats.values.firstOrNull { it.name == name }
+                CategoryEntry(
+                    text = name,
+                    color = cat?.let { hexColor(it.color) } ?: Color.Gray,
+                    logoUrl = cat?.uploadedLogo?.url?.let { absoluteUrl(it, DiscourseApi.BASE) },
+                    onClick = onClose,
+                )
+            }
 
             DrawerSectionTitle("标签")
             DrawerEntry("AI", Icons.Filled.Info, onClose)
@@ -112,14 +136,26 @@ private fun DrawerEntry(text: String, icon: ImageVector, onClick: () -> Unit) {
     )
 }
 
+/** 节点条目:优先显示站点上传的分类图标,缺失时回退到分类色点 */
 @Composable
-private fun CategoryEntry(text: String, color: Color, onClick: () -> Unit) {
+private fun CategoryEntry(text: String, color: Color, logoUrl: String?, onClick: () -> Unit) {
     val nc = LocalNodelocColors.current
     NavigationDrawerItem(
         label = { Text(text) },
         selected = false,
         onClick = onClick,
-        icon = { Box(Modifier.size(10.dp).background(color, CircleShape)) },
+        icon = {
+            if (logoUrl != null) {
+                AsyncImage(
+                    model = logoUrl,
+                    contentDescription = null,
+                    modifier = Modifier.size(26.dp),
+                    contentScale = ContentScale.Fit,
+                )
+            } else {
+                Box(Modifier.size(10.dp).background(color, CircleShape))
+            }
+        },
         colors = NavigationDrawerItemDefaults.colors(unselectedIconColor = nc.onSurfaceVariant),
     )
 }

@@ -211,6 +211,33 @@ data class LotteryActionResultDto(
     val message: String? = null,
 )
 
+/** GET /gifs/search.json 单个搜索结果的 webp 媒体信息 */
+@Serializable
+data class GifMediaDto(val url: String = "", val dims: List<Int> = emptyList())
+
+@Serializable
+data class GifMediaFormatsDto(val webp: GifMediaDto = GifMediaDto())
+
+@Serializable
+data class GifResultDto(
+    val id: String = "",
+    val title: String = "",
+    @SerialName("media_formats") val mediaFormats: GifMediaFormatsDto = GifMediaFormatsDto(),
+)
+
+/** GET /gifs/search.json 响应:next 为空字符串或缺省表示没有下一页 */
+@Serializable
+data class GifSearchDto(
+    val results: List<GifResultDto> = emptyList(),
+    val next: String? = null,
+)
+
+/** POST /posts 成功创建新话题时的响应,只取跳转详情页需要的字段 */
+@Serializable
+data class CreatedPostDto(
+    @SerialName("topic_id") val topicId: Long = 0,
+)
+
 @Serializable
 data class ReplyToUserDto(
     val id: Int = 0,

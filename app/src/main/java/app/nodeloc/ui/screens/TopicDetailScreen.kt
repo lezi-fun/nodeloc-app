@@ -35,7 +35,9 @@ import app.nodeloc.ui.DetailArgs
 import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.CookedText
 import app.nodeloc.ui.components.LoadingMark
+import app.nodeloc.ui.components.GifSearchSheet
 import app.nodeloc.ui.components.LotteryCard
+import app.nodeloc.ui.components.MarkdownAction
 import app.nodeloc.ui.components.MarkdownEditingActions
 import app.nodeloc.ui.components.MarkdownToolbar
 import app.nodeloc.ui.components.TagChip
@@ -90,6 +92,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
     var replyField by remember(args.id) { mutableStateOf(TextFieldValue("")) }
     var sending by remember(args.id) { mutableStateOf(false) }
     var replyError by remember(args.id) { mutableStateOf<String?>(null) }
+    var gifSheetOpen by remember(args.id) { mutableStateOf(false) }
 
     fun sendReply() {
         val text = replyField.text.trim()
@@ -428,7 +431,10 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
                         )
                     }
                     MarkdownToolbar(
-                        onAction = { action -> replyField = MarkdownEditingActions.apply(action, replyField) },
+                        onAction = { action ->
+                            if (action == MarkdownAction.Gif) gifSheetOpen = true
+                            else replyField = MarkdownEditingActions.apply(action, replyField)
+                        },
                     )
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
@@ -467,6 +473,15 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
                                 Icon(Icons.AutoMirrored.Filled.Send, "发送")
                             }
                         }
+                    }
+                    if (gifSheetOpen) {
+                        GifSearchSheet(
+                            onDismiss = { gifSheetOpen = false },
+                            onPick = { gif ->
+                                replyField = MarkdownEditingActions.insertGif(replyField, gif)
+                                gifSheetOpen = false
+                            },
+                        )
                     }
                 }
             } else {

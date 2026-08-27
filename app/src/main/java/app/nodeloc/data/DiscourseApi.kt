@@ -3,6 +3,8 @@ package app.nodeloc.data
 import app.nodeloc.data.model.CsrfDto
 import app.nodeloc.data.model.CurrentSessionDto
 import app.nodeloc.data.model.CurrentUserDto
+import app.nodeloc.data.model.CreatedPostDto
+import app.nodeloc.data.model.GifSearchDto
 import app.nodeloc.data.model.LatestDto
 import app.nodeloc.data.model.LotteryActionResultDto
 import app.nodeloc.data.model.LotteryDto
@@ -256,6 +258,22 @@ object DiscourseApi {
     /** discourse-lottery:拉取单个抽奖最新状态,用于操作后刷新卡片 */
     suspend fun lottery(lotteryId: Long): LotteryDto = get("/lottery/$lotteryId")
 
+    /** KLIPY GIF 搜索(经站点后端代理);pos 传上一页返回的 next 游标,首页传 null */
+    suspend fun gifSearch(query: String, pos: String? = null): GifSearchDto =
+        withContext(Dispatchers.IO) {
+            val url = (BASE + "/gifs/search.json").toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("q", query)
+                .apply { pos?.let { addQueryParameter("pos", it) } }
+                .build()
+            val req = Request.Builder().url(url).build()
+            client.newCall(req).execute().use { resp ->
+                val body = resp.body?.string()
+                if (!resp.isSuccessful || body == null) throw httpError(resp.code, body)
+                json.decodeFromString(body)
+            }
+        }
+
     /**
      * 在话题下发布回复(顶层)。需要登录态;失败时抛 [ApiException],
      * message 为服务端文案(如频率限制、无权限)。
@@ -269,6 +287,19 @@ object DiscourseApi {
         if (code !in 200..299 || body == null) throw httpError(code, body)
         // 发帖成功后旧 CSRF 已消费,置空待下次重取
         SessionStore.csrfToken = null
+    }
+
+    /** 发布新话题(POST /posts 同一端点,带 title+category 即视为创建新话题)。返回新话题 id,用于跳转详情页。 */
+    suspend fun createTopic(title: String, raw: String, categoryId: Int): Long {
+        val form = FormBody.Builder()
+            .add("title", title)
+            .add("raw", raw)
+            .add("category", categoryId.toString())
+            .build()
+        val (code, body) = postForm("/posts", form)
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        SessionStore.csrfToken = null
+        return json.decodeFromString(CreatedPostDto.serializer(), body).topicId
     }
 
 }

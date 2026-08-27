@@ -61,6 +61,7 @@ fun AppRoot() {
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenSearch = { searchOpen = true },
                 onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() },
+                onOpenLogin = { loginOpen = true },
             )
         }
     }

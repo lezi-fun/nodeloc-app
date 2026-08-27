@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -77,6 +78,7 @@ fun TopicListScreen(
     onOpenTopic: (TopicDto) -> Unit,
     onOpenDrawer: () -> Unit = {},
     onOpenSearch: () -> Unit = {},
+    onOpenLogin: () -> Unit = {},
 ) {
     val nc = LocalNodelocColors.current
     val scope = rememberCoroutineScope()
@@ -157,7 +159,7 @@ fun TopicListScreen(
     }
 
     Column(Modifier.fillMaxSize().background(nc.background)) {
-        OfficialTopBar(onOpenDrawer = onOpenDrawer, onOpenSearch = onOpenSearch)
+        OfficialTopBar(onOpenDrawer = onOpenDrawer, onOpenSearch = onOpenSearch, onOpenLogin = onOpenLogin)
         // 官网风格新话题横幅:浅绿底品牌绿字,点击静默刷新并回顶
         if (newCount > 0) {
             Surface(
@@ -243,8 +245,9 @@ fun TopicListScreen(
 }
 
 @Composable
-private fun OfficialTopBar(onOpenDrawer: () -> Unit, onOpenSearch: () -> Unit) {
+private fun OfficialTopBar(onOpenDrawer: () -> Unit, onOpenSearch: () -> Unit, onOpenLogin: () -> Unit) {
     val nc = LocalNodelocColors.current
+    val me = SessionRepo.currentUser.collectAsState().value
     Row(
         Modifier.fillMaxWidth().height(56.dp).background(nc.headerBg).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -259,11 +262,44 @@ private fun OfficialTopBar(onOpenDrawer: () -> Unit, onOpenSearch: () -> Unit) {
                 modifier = Modifier.height(23.dp),
             )
         }
+        if (me != null) {
+            // 官网行为:签到状态无独立接口,纯前端 localStorage 记忆;
+            // 暂不接后端调用,仅还原图标位置与形态
+            IconButton(onClick = {}) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_calendar_heart),
+                    contentDescription = "每日签到",
+                    tint = nc.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
         IconButton(onClick = onOpenSearch) {
             Icon(Icons.Filled.Search, contentDescription = "搜索", tint = nc.onSurfaceVariant)
         }
-        IconButton(onClick = {}) {
-            Icon(Icons.Filled.Notifications, contentDescription = "通知", tint = nc.onSurfaceVariant)
+        if (me != null) {
+            IconButton(onClick = {}) {
+                Icon(Icons.Filled.Notifications, contentDescription = "通知", tint = nc.onSurfaceVariant)
+            }
+            Spacer(Modifier.width(2.dp))
+            Avatar(name = me.username, url = SiteRepo.avatarUrl(me.avatarTemplate, 48), size = 28.dp)
+            Spacer(Modifier.width(4.dp))
+        } else {
+            Spacer(Modifier.width(4.dp))
+            Surface(
+                onClick = onOpenLogin,
+                shape = RoundedCornerShape(999.dp),
+                color = nc.primary,
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text("登录", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                }
+            }
         }
     }
 }

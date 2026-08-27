@@ -152,6 +152,18 @@ data class PostReplyHistoryDto(
 @Serializable
 data class ActionSummaryDto(val id: Int = 0, val count: Int = 0)
 
+/** discourse-reactions:某一种表情反应的汇总计数,id 是表情键名(heart/+1/laughing/...) */
+@Serializable
+data class ReactionSummaryDto(val id: String = "", val type: String = "emoji", val count: Int = 0)
+
+/** discourse-reactions:当前用户已选择的反应;can_undo 为 false 时(如管理员锁定)不能取消 */
+@Serializable
+data class CurrentUserReactionDto(
+    val id: String = "",
+    val type: String = "emoji",
+    @SerialName("can_undo") val canUndo: Boolean = true,
+)
+
 @Serializable
 data class LotteryLevelDto(
     val id: Int = 0,
@@ -266,6 +278,10 @@ data class PostDto(
     val staff: Boolean = false,
     /** discourse-lottery 插件:该楼层若挂了抽奖组件则非空,与 cooked 正文平行渲染 */
     val lottery: LotteryDto? = null,
+    /** discourse-reactions:该楼层已收到的各类表情反应汇总(id 为 heart/+1/laughing 等表情键名) */
+    val reactions: List<ReactionSummaryDto> = emptyList(),
+    /** discourse-reactions:当前登录用户对该楼层已选择的反应,未反应时为 null */
+    @SerialName("current_user_reaction") val currentUserReaction: CurrentUserReactionDto? = null,
 ) {
     /** 徽章文案:管理员 → ADMIN,版主 → MOD,其余职员 → STAFF,普通用户无。 */
     val staffBadge: String?

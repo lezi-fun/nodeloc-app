@@ -40,6 +40,7 @@ import app.nodeloc.ui.components.LotteryCard
 import app.nodeloc.ui.components.MarkdownAction
 import app.nodeloc.ui.components.MarkdownEditingActions
 import app.nodeloc.ui.components.MarkdownToolbar
+import app.nodeloc.ui.components.ReactionButton
 import app.nodeloc.ui.components.TagChip
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.hexColor
@@ -160,6 +161,16 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
             expandedPosts = expandedPosts + initiallyExpanded(response.roots)
         }.onFailure { loadError = it.message ?: "加载更多回复失败" }
         loadingMore = false
+    }
+
+    // 反应切换后用服务端返回的最新 PostDto 替换本地缓存;帖子可能分布在四处不同结构里(经典流/嵌套树的根与子层)
+    fun updatePost(updated: PostDto) {
+        posts = posts.map { if (it.id == updated.id) updated else it }
+        if (opPost?.id == updated.id) opPost = updated
+        roots = roots.map { if (it.id == updated.id) updated else it }
+        childrenByPost = childrenByPost.mapValues { (_, children) ->
+            children.map { if (it.id == updated.id) updated else it }
+        }
     }
 
     fun toggleChildren(item: DisplayPost) {
@@ -396,6 +407,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
                         item, current.nested, post.id in expandedPosts, hasDescendants,
                         post.id in childLoading, childHasMore[post.id] == true, loggedIn,
                         { toggleChildren(item) }, { loadMoreChildren(item) },
+                        onReactionUpdated = ::updatePost,
                     )
                     HorizontalDivider(color = nc.outlineVariant)
                 }
@@ -521,10 +533,10 @@ private fun PostItem(
     canReply: Boolean,
     onToggleChildren: () -> Unit,
     onLoadMoreChildren: () -> Unit,
+    onReactionUpdated: (PostDto) -> Unit,
 ) {
     val post = item.post
     val nc = LocalNodelocColors.current
-    val likes = post.actionsSummary.firstOrNull { it.id == 2 }?.count ?: 0
     val depth = if (nestedMode) min(item.depth, 5) else 0
     val railSpacing = 14.dp
     val railColor = nc.outlineVariant
@@ -573,8 +585,7 @@ private fun PostItem(
                     LotteryCard(lottery, Modifier.padding(top = 10.dp))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
-                    Icon(Icons.Filled.FavoriteBorder, "点赞", tint = nc.onSurfaceVariant, modifier = Modifier.size(15.dp))
-                    if (likes > 0) { Spacer(Modifier.width(4.dp)); Text(likes.toString(), style = MaterialTheme.typography.labelMedium, color = nc.onSurfaceVariant) }
+                    ReactionButton(post, canReact = canReply, onUpdated = onReactionUpdated)
                     if (canReply) { Spacer(Modifier.width(22.dp)); Text("回复", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant) }
                     Spacer(Modifier.width(22.dp)); Icon(Icons.Filled.Share, null, tint = nc.onSurfaceVariant, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp)); Text("分享", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)

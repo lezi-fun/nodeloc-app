@@ -10,6 +10,7 @@ import app.nodeloc.data.model.LotteryActionResultDto
 import app.nodeloc.data.model.LotteryDto
 import app.nodeloc.data.model.NestedChildrenDto
 import app.nodeloc.data.model.NestedTopicDto
+import app.nodeloc.data.model.PostDto
 import app.nodeloc.data.model.PostReplyHistoryDto
 import app.nodeloc.data.model.PostRepliesDto
 import app.nodeloc.data.model.PostsChunkDto
@@ -118,16 +119,19 @@ object DiscourseApi {
         }
     }
 
-    /** 表单 POST 统一入口。_forum_session 被服务端定期轮换会使缓存的 CSRF 失效:
+    /** 带 CSRF 的写请求统一入口。_forum_session 被服务端定期轮换会使缓存的 CSRF 失效:
      *  遇 403 时清空缓存重取 token 自动重试一次。返回 (HTTP 状态码, 响应体)。 */
-    private suspend fun postForm(path: String, form: FormBody): Pair<Int, String?> =
+    private suspend fun writeRequest(
+        path: String,
+        build: Request.Builder.(csrf: String) -> Request.Builder,
+    ): Pair<Int, String?> =
         withContext(Dispatchers.IO) {
             fun send(csrf: String): Pair<Int, String?> {
                 val req = Request.Builder()
                     .url(BASE + path)
                     .header("X-Requested-With", "XMLHttpRequest")
                     .header("X-CSRF-Token", csrf)
-                    .post(form)
+                    .build(csrf)
                     .build()
                 return client.newCall(req).execute().use { resp -> resp.code to resp.body?.string() }
             }
@@ -138,6 +142,12 @@ object DiscourseApi {
             }
             result
         }
+
+    private suspend fun postForm(path: String, form: FormBody): Pair<Int, String?> =
+        writeRequest(path) { post(form) }
+
+    private suspend fun putForm(path: String, form: FormBody = FormBody.Builder().build()): Pair<Int, String?> =
+        writeRequest(path) { put(form) }
 
     /**
      * 密码登录。成功返回当前用户;账号开启 2FA 时抛 [SecondFactorRequiredException]
@@ -257,6 +267,18 @@ object DiscourseApi {
 
     /** discourse-lottery:拉取单个抽奖最新状态,用于操作后刷新卡片 */
     suspend fun lottery(lotteryId: Long): LotteryDto = get("/lottery/$lotteryId")
+
+    /**
+     * discourse-reactions:对某楼层切换一种表情反应。同一 reaction 再点一次是取消;
+     * 选择另一种 reaction 会先取消当前反应再套用新的(服务端行为,不是本地模拟)。
+     * 响应体是该楼层完整的最新 PostDto,直接替换本地缓存的这条帖子即可同步 UI。
+     */
+    suspend fun toggleReaction(postId: Long, reaction: String): PostDto {
+        val encoded = java.net.URLEncoder.encode(reaction, "UTF-8")
+        val (code, body) = putForm("/discourse-reactions/posts/$postId/custom-reactions/$encoded/toggle.json")
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        return json.decodeFromString(body)
+    }
 
     /** KLIPY GIF 搜索(经站点后端代理);pos 传上一页返回的 next 游标,首页传 null */
     suspend fun gifSearch(query: String, pos: String? = null): GifSearchDto =

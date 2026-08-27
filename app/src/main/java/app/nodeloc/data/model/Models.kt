@@ -257,6 +257,10 @@ data class GifResultDto(
     @SerialName("media_formats") val mediaFormats: GifMediaFormatsDto = GifMediaFormatsDto(),
 )
 
+/** GET /posts/{id}/cooked.json 响应:切换原文/译文后的正文 HTML */
+@Serializable
+data class PostCookedDto(val cooked: String = "")
+
 /** GET /gifs/search.json 响应:next 为空字符串或缺省表示没有下一页 */
 @Serializable
 data class GifSearchDto(
@@ -306,6 +310,10 @@ data class PostDto(
     val rewards: List<RewardDto> = emptyList(),
     /** discourse-custom-badge:发帖时该用户显示的称号,可为空 */
     @SerialName("user_title") val userTitle: String? = null,
+    /** discourse 内容本地化:该楼层原文语言,如 en/vi/ja;原文本就是站点默认语言时为 null */
+    val locale: String? = null,
+    /** true 表示当前 cooked 是自动翻译结果(非楼主原文语言),需展示"查看原文"提示条 */
+    @SerialName("is_localized") val isLocalized: Boolean = false,
 ) {
     /** 徽章文案:管理员 → ADMIN,版主 → MOD,其余职员 → STAFF,普通用户无。 */
     val staffBadge: String?

@@ -12,6 +12,7 @@ import app.nodeloc.data.model.LotteryDto
 import app.nodeloc.data.model.NestedChildrenDto
 import app.nodeloc.data.model.NestedTopicDto
 import app.nodeloc.data.model.PostDto
+import app.nodeloc.data.model.PostCookedDto
 import app.nodeloc.data.model.PostReplyHistoryDto
 import app.nodeloc.data.model.PostRepliesDto
 import app.nodeloc.data.model.PostsChunkDto
@@ -276,6 +277,9 @@ object DiscourseApi {
 
     /** discourse-lottery:拉取单个抽奖最新状态,用于操作后刷新卡片 */
     suspend fun lottery(lotteryId: Long): LotteryDto = get("/lottery/$lotteryId")
+
+    /** 内容本地化"查看原文":与官网一致,每次调用在原文/译文之间切换,不是幂等的单向操作。 */
+    suspend fun postOriginalCooked(postId: Long): String = get<PostCookedDto>("/posts/$postId/cooked.json").cooked
 
     suspend fun userProfile(username: String): UserProfileDto = get<UserProfileResponseDto>("/u/$username.json").user
 

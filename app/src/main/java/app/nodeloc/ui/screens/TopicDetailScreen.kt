@@ -612,7 +612,38 @@ private fun PostItem(
                 }
                 Text(post.username + " · " + post.postNumber + " 楼", style = MaterialTheme.typography.labelSmall,
                     color = nc.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
-                CookedText(post.cooked, Modifier.padding(top = 7.dp))
+                // 内容本地化:cooked 默认已是站点语言译文;is_localized 时提供"查看原文"入口,
+                // 点击一次性切到原文并隐藏提示条(与官网行为一致,不提供切回译文)。
+                var showingOriginal by remember(post.id) { mutableStateOf(false) }
+                var originalCooked by remember(post.id) { mutableStateOf<String?>(null) }
+                val scope = rememberCoroutineScope()
+                if (post.isLocalized && post.locale != null && !showingOriginal) {
+                    Surface(
+                        onClick = {
+                            scope.launch {
+                                runCatching { DiscourseApi.postOriginalCooked(post.id) }
+                                    .onSuccess { cooked -> originalCooked = cooked; showingOriginal = true }
+                            }
+                        },
+                        color = nc.secondaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    ) {
+                        Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
+                            Text(
+                                "此帖子最初使用 " + app.nodeloc.util.LanguageNames.displayName(post.locale) + " 编写，点击查看原文",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = nc.onSurfaceVariant,
+                            )
+                            Text(
+                                "AI 生成的译文可能不准确。",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = nc.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
+                    }
+                }
+                CookedText(originalCooked ?: post.cooked, Modifier.padding(top = 7.dp))
                 post.lottery?.let { lottery ->
                     LotteryCard(lottery, Modifier.padding(top = 10.dp))
                 }

@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
@@ -26,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import app.nodeloc.data.DiscourseApi
 import app.nodeloc.util.absoluteUrl
@@ -85,6 +89,9 @@ private fun RenderBlock(node: Node, onPreview: (String) -> Unit) {
         is Element -> when {
             // 官网信任等级限制提示区块:锁图标 + 文案居中卡片
             node.hasClass("read-permission-notice") -> PermissionNotice(node)
+            // discourse-apps 插件的小程序/小游戏嵌入点:cooked 里只有一个空占位 div,
+            // 真实界面由 /apps/installs/{id}/webview 这个自包含页面提供
+            node.hasClass("discourse-app-embed") -> AppEmbedBlock(node)
             else -> when (node.tagName().lowercase()) {
                 "p" -> Paragraph(node, onPreview)
                 "img" -> if (node.isEmoji()) InlineFlow(Element("span").appendChild(node.clone())) else ContentImage(node, onPreview)
@@ -234,6 +241,33 @@ private fun ContentImage(node: Element, onPreview: (String) -> Unit) {
                 .clickable { onPreview(url) },
             contentScale = ContentScale.Fit,
         )
+    }
+}
+
+/**
+ * discourse-apps 小程序嵌入(如贪吃蛇等站内小游戏)。
+ * data-app-install 是安装 ID,拼出的 webview 地址本身是自包含页面(内部已用 srcdoc iframe 隔离),
+ * 直接交给 WebView 加载即可,无需再单独请求 /apps/installs/{id}/render。
+ */
+@Composable
+private fun AppEmbedBlock(node: Element) {
+    val nc = MaterialTheme.colorScheme
+    val installId = node.attr("data-app-install").takeIf { it.isNotBlank() } ?: return
+    val url = DiscourseApi.BASE + "/apps/installs/" + installId + "/webview"
+    Surface(shape = RoundedCornerShape(12.dp), color = nc.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
+        key(url) {
+            AndroidView(
+                factory = { context ->
+                    WebView(context).apply {
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        webViewClient = WebViewClient()
+                        loadUrl(url)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(520.dp),
+            )
+        }
     }
 }
 

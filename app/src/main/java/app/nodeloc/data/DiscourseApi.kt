@@ -3,6 +3,7 @@ package app.nodeloc.data
 import app.nodeloc.data.model.CsrfDto
 import app.nodeloc.data.model.CurrentSessionDto
 import app.nodeloc.data.model.CurrentUserDto
+import app.nodeloc.data.model.BadgeStyleDto
 import app.nodeloc.data.model.CreatedPostDto
 import app.nodeloc.data.model.GifSearchDto
 import app.nodeloc.data.model.LatestDto
@@ -15,6 +16,12 @@ import app.nodeloc.data.model.PostReplyHistoryDto
 import app.nodeloc.data.model.PostRepliesDto
 import app.nodeloc.data.model.PostsChunkDto
 import app.nodeloc.data.model.RewardActionResultDto
+import app.nodeloc.data.model.UserActionDto
+import app.nodeloc.data.model.UserActionsResponseDto
+import app.nodeloc.data.model.UserProfileDto
+import app.nodeloc.data.model.UserProfileResponseDto
+import app.nodeloc.data.model.UserSummaryDto
+import app.nodeloc.data.model.UserSummaryResponseDto
 import app.nodeloc.data.model.SearchDto
 import app.nodeloc.data.model.SessionResponseDto
 import app.nodeloc.data.model.SiteDto
@@ -33,6 +40,7 @@ import okhttp3.Request
 object DiscourseApi {
     const val BASE = "https://www.nodeloc.com"
     private const val HOST = "www.nodeloc.com"
+    @Volatile private var cachedBadgeStyles: List<BadgeStyleDto>? = null
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -268,6 +276,26 @@ object DiscourseApi {
 
     /** discourse-lottery:拉取单个抽奖最新状态,用于操作后刷新卡片 */
     suspend fun lottery(lotteryId: Long): LotteryDto = get("/lottery/$lotteryId")
+
+    suspend fun userProfile(username: String): UserProfileDto = get<UserProfileResponseDto>("/u/$username.json").user
+
+    suspend fun userSummary(username: String): UserSummaryDto =
+        get<UserSummaryResponseDto>("/u/$username/summary.json").userSummary
+
+    /** action types 4=回复 5=新话题(Discourse 标准枚举),用户主页"帖子"标签页用 */
+    suspend fun userActions(username: String, filter: String = "4,5"): List<UserActionDto> =
+        get<UserActionsResponseDto>("/user_actions.json?username=$username&filter=$filter").userActions
+
+    /**
+     * discourse_custom_badge:全站称号动效样式表,公开只读接口。进程内缓存一份即可,
+     * 站点管理员改配置的频率极低,不需要每次都重新拉取。
+     */
+    suspend fun badgeStyles(): List<BadgeStyleDto> {
+        cachedBadgeStyles?.let { return it }
+        return runCatching { get<List<BadgeStyleDto>>("/discourse_custom_badge/badge-styles/list.json") }
+            .getOrDefault(emptyList())
+            .also { cachedBadgeStyles = it }
+    }
 
     /**
      * discourse-reactions:对某楼层切换一种表情反应。同一 reaction 再点一次是取消;

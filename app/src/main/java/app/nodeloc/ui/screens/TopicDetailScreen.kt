@@ -1,6 +1,7 @@
 package app.nodeloc.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,6 +34,7 @@ import app.nodeloc.data.model.PostDto
 import app.nodeloc.data.model.TopicDetailDto
 import app.nodeloc.ui.DetailArgs
 import app.nodeloc.ui.components.Avatar
+import app.nodeloc.ui.components.BadgeTitleText
 import app.nodeloc.ui.components.CookedText
 import app.nodeloc.ui.components.LoadingMark
 import app.nodeloc.ui.components.GifSearchSheet
@@ -68,7 +70,12 @@ private fun initiallyExpanded(posts: List<PostDto>): Set<Long> = buildSet {
 }
 
 @Composable
-fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> Unit = {}) {
+fun TopicDetailScreen(
+    args: DetailArgs,
+    onBack: () -> Unit,
+    onOpenLogin: () -> Unit = {},
+    onOpenProfile: (String) -> Unit = {},
+) {
     val nc = LocalNodelocColors.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -89,6 +96,11 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
     var loadingMore by remember(args.id) { mutableStateOf(false) }
     var loadError by remember(args.id) { mutableStateOf<String?>(null) }
     var reloadToken by remember(args.id) { mutableIntStateOf(0) }
+    // 称号动效样式表:全站共用,进程内已缓存,这里只是拿一份引用给各楼层匹配称号颜色
+    var badgeStyles by remember { mutableStateOf<List<app.nodeloc.data.model.BadgeStyleDto>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        badgeStyles = runCatching { DiscourseApi.badgeStyles() }.getOrDefault(emptyList())
+    }
 
     // 底部回复栏:Markdown 编辑器(工具栏+文本框)、发送中与发送失败文案
     var replyField by remember(args.id) { mutableStateOf(TextFieldValue("")) }
@@ -409,6 +421,8 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
                         post.id in childLoading, childHasMore[post.id] == true, loggedIn,
                         { toggleChildren(item) }, { loadMoreChildren(item) },
                         onReactionUpdated = ::updatePost,
+                        onOpenProfile = onOpenProfile,
+                        badgeStyles = badgeStyles,
                     )
                     HorizontalDivider(color = nc.outlineVariant)
                 }
@@ -535,6 +549,8 @@ private fun PostItem(
     onToggleChildren: () -> Unit,
     onLoadMoreChildren: () -> Unit,
     onReactionUpdated: (PostDto) -> Unit,
+    onOpenProfile: (String) -> Unit,
+    badgeStyles: List<app.nodeloc.data.model.BadgeStyleDto>,
 ) {
     val post = item.post
     val nc = LocalNodelocColors.current
@@ -564,11 +580,22 @@ private fun PostItem(
                 Spacer(Modifier.width(4.dp))
             }
             // 官网行为:帖子流头像为动图(_2.gif),列表等位置为静态(_2.png)
-            Avatar(post.username, SiteRepo.animatedAvatarUrl(post.avatarTemplate), if (depth > 0) 36.dp else 42.dp)
+            Avatar(
+                post.username,
+                SiteRepo.animatedAvatarUrl(post.avatarTemplate),
+                if (depth > 0) 36.dp else 42.dp,
+                modifier = Modifier.clickable { onOpenProfile(post.username) },
+            )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(post.username, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = nc.onBackground)
+                    Text(
+                        post.username,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = nc.onBackground,
+                        modifier = Modifier.clickable { onOpenProfile(post.username) },
+                    )
                     post.staffBadge?.let { badge ->
                         Spacer(Modifier.width(7.dp))
                         Box(Modifier.background(nc.adminBadge, RoundedCornerShape(5.dp)).padding(horizontal = 6.dp, vertical = 1.5.dp)) {
@@ -578,6 +605,10 @@ private fun PostItem(
                     }
                     Spacer(Modifier.weight(1f))
                     Text(SiteRepo.relativeTime(post.createdAt), style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant)
+                }
+                post.userTitle?.takeIf { it.isNotBlank() }?.let { title ->
+                    val badgeStyle = badgeStyles.firstOrNull { it.name == title }
+                    BadgeTitleText(title, badgeStyle, nc.onSurfaceVariant, modifier = Modifier.padding(top = 1.dp))
                 }
                 Text(post.username + " · " + post.postNumber + " 楼", style = MaterialTheme.typography.labelSmall,
                     color = nc.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))

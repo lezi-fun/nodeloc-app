@@ -17,6 +17,7 @@ import app.nodeloc.ui.screens.LoginScreen
 import app.nodeloc.ui.screens.SearchScreen
 import app.nodeloc.ui.screens.TopicDetailScreen
 import app.nodeloc.ui.screens.TopicListScreen
+import app.nodeloc.ui.screens.UserProfileScreen
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -30,15 +31,22 @@ fun AppRoot() {
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var loginOpen by rememberSaveable { mutableStateOf(false) }
     var createTopicOpen by rememberSaveable { mutableStateOf(false) }
+    var profileUsername by rememberSaveable { mutableStateOf<String?>(null) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
-    BackHandler(enabled = detailJson != null && !drawerState.isOpen) { detailJson = null }
-    BackHandler(enabled = searchOpen && detailJson == null && !drawerState.isOpen) { searchOpen = false }
-    BackHandler(enabled = loginOpen && detailJson == null && !searchOpen && !drawerState.isOpen) { loginOpen = false }
+    BackHandler(enabled = profileUsername != null && !drawerState.isOpen) { profileUsername = null }
+    BackHandler(enabled = detailJson != null && profileUsername == null && !drawerState.isOpen) { detailJson = null }
     BackHandler(
-        enabled = createTopicOpen && detailJson == null && !searchOpen && !loginOpen && !drawerState.isOpen,
+        enabled = searchOpen && detailJson == null && profileUsername == null && !drawerState.isOpen,
+    ) { searchOpen = false }
+    BackHandler(
+        enabled = loginOpen && detailJson == null && !searchOpen && profileUsername == null && !drawerState.isOpen,
+    ) { loginOpen = false }
+    BackHandler(
+        enabled = createTopicOpen && detailJson == null && !searchOpen && !loginOpen &&
+            profileUsername == null && !drawerState.isOpen,
     ) { createTopicOpen = false }
 
     ModalNavigationDrawer(
@@ -52,10 +60,16 @@ fun AppRoot() {
     ) {
         val d = detailJson?.let { runCatching { DetailArgs.fromJson(it) }.getOrNull() }
         when {
+            profileUsername != null -> UserProfileScreen(
+                username = profileUsername!!,
+                onBack = { profileUsername = null },
+                onOpenTopic = { topicId -> detailJson = DetailArgs(topicId, "", 0, false).toJson() },
+            )
             d != null -> TopicDetailScreen(
                 args = d,
                 onBack = { detailJson = null },
                 onOpenLogin = { loginOpen = true },
+                onOpenProfile = { username -> profileUsername = username },
             )
             searchOpen -> SearchScreen(
                 onBack = { searchOpen = false },

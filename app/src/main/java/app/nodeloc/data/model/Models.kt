@@ -304,6 +304,8 @@ data class PostDto(
     @SerialName("current_user_reaction") val currentUserReaction: CurrentUserReactionDto? = null,
     /** discourse-reward:该楼层已收到的打赏记录,最新的排在最前(与官网一致) */
     val rewards: List<RewardDto> = emptyList(),
+    /** discourse-custom-badge:发帖时该用户显示的称号,可为空 */
+    @SerialName("user_title") val userTitle: String? = null,
 ) {
     /** 徽章文案:管理员 → ADMIN,版主 → MOD,其余职员 → STAFF,普通用户无。 */
     val staffBadge: String?
@@ -356,4 +358,83 @@ data class SearchPostDto(
     val blurb: String = "",
     @SerialName("post_number") val postNumber: Int = 0,
     @SerialName("created_at") val createdAt: String = "",
+)
+
+/** GET /u/{username}.json 响应的顶层容器,只取 user 字段 */
+@Serializable
+data class UserProfileResponseDto(val user: UserProfileDto)
+
+/** 用户主页展示所需字段 */
+@Serializable
+data class UserProfileDto(
+    val id: Long = 0,
+    val username: String = "",
+    val name: String = "",
+    @SerialName("avatar_template") val avatarTemplate: String? = null,
+    @SerialName("animated_avatar") val animatedAvatar: String? = null,
+    val title: String? = null,
+    @SerialName("flair_name") val flairName: String? = null,
+    @SerialName("flair_url") val flairUrl: String? = null,
+    @SerialName("flair_bg_color") val flairBgColor: String? = null,
+    @SerialName("flair_color") val flairColor: String? = null,
+    @SerialName("trust_level") val trustLevel: Int = 0,
+    val admin: Boolean = false,
+    val moderator: Boolean = false,
+    @SerialName("bio_excerpt") val bioExcerpt: String? = null,
+    @SerialName("bio_cooked") val bioCooked: String? = null,
+    val website: String? = null,
+    val location: String? = null,
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("last_seen_at") val lastSeenAt: String? = null,
+    @SerialName("badge_count") val badgeCount: Int = 0,
+    @SerialName("gamification_score") val gamificationScore: Long = 0,
+    @SerialName("total_followers") val totalFollowers: Int = 0,
+    @SerialName("total_following") val totalFollowing: Int = 0,
+)
+
+/** GET /u/{username}/summary.json 响应的顶层容器 */
+@Serializable
+data class UserSummaryResponseDto(@SerialName("user_summary") val userSummary: UserSummaryDto)
+
+@Serializable
+data class UserSummaryDto(
+    @SerialName("likes_given") val likesGiven: Int = 0,
+    @SerialName("likes_received") val likesReceived: Int = 0,
+    @SerialName("topic_count") val topicCount: Int = 0,
+    @SerialName("post_count") val postCount: Int = 0,
+    @SerialName("days_visited") val daysVisited: Int = 0,
+    @SerialName("posts_read_count") val postsReadCount: Int = 0,
+    @SerialName("solved_count") val solvedCount: Int = 0,
+)
+
+/** discourse_custom_badge 插件:全站称号(badge title)的文字颜色与动画特效配置表 */
+@Serializable
+data class BadgeStyleDto(
+    val id: Long = 0,
+    val name: String = "",
+    val icon: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("custom_style") val customStyle: BadgeCustomStyleDto = BadgeCustomStyleDto(),
+)
+
+@Serializable
+data class BadgeCustomStyleDto(
+    @SerialName("text_color") val textColor: String? = null,
+    @SerialName("text_effect") val textEffect: String? = null,
+)
+
+/** GET /user_actions.json 响应的顶层容器 */
+@Serializable
+data class UserActionsResponseDto(@SerialName("user_actions") val userActions: List<UserActionDto> = emptyList())
+
+/** 用户主页"帖子"标签页的一条记录:action_type 4=回复 5=新话题(Discourse 标准枚举) */
+@Serializable
+data class UserActionDto(
+    val excerpt: String? = null,
+    @SerialName("action_type") val actionType: Int = 0,
+    @SerialName("created_at") val createdAt: String = "",
+    val title: String = "",
+    @SerialName("topic_id") val topicId: Long = 0,
+    @SerialName("post_number") val postNumber: Int = 0,
+    @SerialName("category_id") val categoryId: Int = 0,
 )

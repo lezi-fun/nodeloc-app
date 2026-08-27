@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
@@ -79,6 +80,7 @@ fun TopicListScreen(
     onOpenDrawer: () -> Unit = {},
     onOpenSearch: () -> Unit = {},
     onOpenLogin: () -> Unit = {},
+    onOpenCreateTopic: () -> Unit = {},
 ) {
     val nc = LocalNodelocColors.current
     val scope = rememberCoroutineScope()
@@ -158,6 +160,7 @@ fun TopicListScreen(
         if (nearEnd && hasMore && !appending && appendError == null) ready?.let(::appendMore)
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(nc.background)) {
         OfficialTopBar(onOpenDrawer = onOpenDrawer, onOpenSearch = onOpenSearch, onOpenLogin = onOpenLogin)
         // 官网风格新话题横幅:浅绿底品牌绿字,点击静默刷新并回顶
@@ -238,6 +241,23 @@ fun TopicListScreen(
                             Text("已经到底了", style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant)
                         }
                     }
+                }
+            }
+        }
+    }
+        // 官网移动端"新建话题"是绿色圆角胶囊按钮而非悬浮 FAB,
+        // 但用户要求的是右下角常驻绿色圆形加号,故这里用 FAB 形式还原官网配色。
+        val me = SessionRepo.currentUser.collectAsState().value
+        if (me != null) {
+            Surface(
+                onClick = onOpenCreateTopic,
+                shape = CircleShape,
+                color = Color(0xFF009966),
+                shadowElevation = 4.dp,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp).size(56.dp),
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Add, contentDescription = "新建话题", tint = Color.White, modifier = Modifier.size(28.dp))
                 }
             }
         }

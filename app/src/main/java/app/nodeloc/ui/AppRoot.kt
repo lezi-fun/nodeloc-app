@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.nodeloc.data.model.TopicDto
 import app.nodeloc.ui.components.NodeLocDrawer
+import app.nodeloc.ui.screens.CreateTopicScreen
 import app.nodeloc.ui.screens.LoginScreen
 import app.nodeloc.ui.screens.SearchScreen
 import app.nodeloc.ui.screens.TopicDetailScreen
@@ -28,6 +29,7 @@ fun AppRoot() {
     var detailJson by rememberSaveable { mutableStateOf<String?>(null) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var loginOpen by rememberSaveable { mutableStateOf(false) }
+    var createTopicOpen by rememberSaveable { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -35,6 +37,9 @@ fun AppRoot() {
     BackHandler(enabled = detailJson != null && !drawerState.isOpen) { detailJson = null }
     BackHandler(enabled = searchOpen && detailJson == null && !drawerState.isOpen) { searchOpen = false }
     BackHandler(enabled = loginOpen && detailJson == null && !searchOpen && !drawerState.isOpen) { loginOpen = false }
+    BackHandler(
+        enabled = createTopicOpen && detailJson == null && !searchOpen && !loginOpen && !drawerState.isOpen,
+    ) { createTopicOpen = false }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -57,11 +62,19 @@ fun AppRoot() {
                 onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() },
             )
             loginOpen -> LoginScreen(onBack = { loginOpen = false })
+            createTopicOpen -> CreateTopicScreen(
+                onBack = { createTopicOpen = false },
+                onCreated = { topicId ->
+                    createTopicOpen = false
+                    detailJson = DetailArgs(topicId, "", 0, false).toJson()
+                },
+            )
             else -> TopicListScreen(
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenSearch = { searchOpen = true },
                 onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() },
                 onOpenLogin = { loginOpen = true },
+                onOpenCreateTopic = { createTopicOpen = true },
             )
         }
     }

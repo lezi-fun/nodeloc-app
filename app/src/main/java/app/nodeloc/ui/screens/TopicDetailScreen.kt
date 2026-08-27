@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -35,6 +36,8 @@ import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.CookedText
 import app.nodeloc.ui.components.LoadingMark
 import app.nodeloc.ui.components.LotteryCard
+import app.nodeloc.ui.components.MarkdownEditingActions
+import app.nodeloc.ui.components.MarkdownToolbar
 import app.nodeloc.ui.components.TagChip
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.hexColor
@@ -83,20 +86,20 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
     var loadError by remember(args.id) { mutableStateOf<String?>(null) }
     var reloadToken by remember(args.id) { mutableIntStateOf(0) }
 
-    // 底部回复栏:输入、发送中与发送失败文案
-    var replyText by remember(args.id) { mutableStateOf("") }
+    // 底部回复栏:Markdown 编辑器(工具栏+文本框)、发送中与发送失败文案
+    var replyField by remember(args.id) { mutableStateOf(TextFieldValue("")) }
     var sending by remember(args.id) { mutableStateOf(false) }
     var replyError by remember(args.id) { mutableStateOf<String?>(null) }
 
     fun sendReply() {
-        val text = replyText.trim()
+        val text = replyField.text.trim()
         if (text.isEmpty() || sending) return
         sending = true
         replyError = null
         scope.launch {
             runCatching { DiscourseApi.createPost(args.id, text) }
                 .onSuccess {
-                    replyText = ""
+                    replyField = TextFieldValue("")
                     // 刷新楼层以显示新回复;保留登录态避免输入栏闪烁
                     reloadToken++
                 }
@@ -424,16 +427,19 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
                         )
                     }
+                    MarkdownToolbar(
+                        onAction = { action -> replyField = MarkdownEditingActions.apply(action, replyField) },
+                    )
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.Bottom,
                     ) {
                         OutlinedTextField(
-                            value = replyText,
-                            onValueChange = { replyText = it },
-                            placeholder = { Text("回复此话题…", color = nc.onSurfaceVariant) },
+                            value = replyField,
+                            onValueChange = { replyField = it },
+                            placeholder = { Text("回复此话题…使用 Markdown 排版", color = nc.onSurfaceVariant) },
                             shape = RoundedCornerShape(21.dp),
-                            maxLines = 5,
+                            maxLines = 8,
                             colors = OutlinedTextFieldDefaults.colors(
                                 unfocusedBorderColor = nc.outlineVariant,
                                 focusedBorderColor = nc.primary,
@@ -443,7 +449,7 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
                         Spacer(Modifier.width(10.dp))
                         FilledIconButton(
                             onClick = ::sendReply,
-                            enabled = !sending && replyText.isNotBlank(),
+                            enabled = !sending && replyField.text.isNotBlank(),
                             shape = CircleShape,
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = nc.primary,

@@ -114,6 +114,27 @@ object DiscourseApi {
         }
     }
 
+    /** 表单 POST 统一入口。_forum_session 被服务端定期轮换会使缓存的 CSRF 失效:
+     *  遇 403 时清空缓存重取 token 自动重试一次。返回 (HTTP 状态码, 响应体)。 */
+    private suspend fun postForm(path: String, form: FormBody): Pair<Int, String?> =
+        withContext(Dispatchers.IO) {
+            fun send(csrf: String): Pair<Int, String?> {
+                val req = Request.Builder()
+                    .url(BASE + path)
+                    .header("X-Requested-With", "XMLHttpRequest")
+                    .header("X-CSRF-Token", csrf)
+                    .post(form)
+                    .build()
+                return client.newCall(req).execute().use { resp -> resp.code to resp.body?.string() }
+            }
+            var result = send(fetchCsrf())
+            if (result.first == 403) {
+                SessionStore.csrfToken = null
+                result = send(fetchCsrf())
+            }
+            result
+        }
+
     /**
      * 密码登录。成功返回当前用户;账号开启 2FA 时抛 [SecondFactorRequiredException]
      * (携带二次提交所需的 second_factor_token);凭据错误抛 [ApiException](服务端文案)。
@@ -124,49 +145,32 @@ object DiscourseApi {
         secondFactorToken: String? = null,
         totp: String? = null,
     ): CurrentUserDto = withContext(Dispatchers.IO) {
-        val csrf = fetchCsrf()
         val form = FormBody.Builder()
             .add("login", login)
             .add("password", password)
             .add("second_factor_method", "1")
         secondFactorToken?.takeIf { it.isNotBlank() }?.let { form.add("second_factor_token", it) }
         totp?.takeIf { it.isNotBlank() }?.let { form.add("second_factor_totp", it) }
-        val req = Request.Builder()
-            .url(BASE + "/session")
-            .header("X-Requested-With", "XMLHttpRequest")
-            .header("X-CSRF-Token", csrf)
-            .post(form.build())
-            .build()
-        client.newCall(req).execute().use { resp ->
-            val body = resp.body?.string()
-            if (!resp.isSuccessful || body == null) throw httpError(resp.code, body)
-            val r = json.decodeFromString(SessionResponseDto.serializer(), body)
-            when {
-                r.secondFactorRequired -> throw SecondFactorRequiredException(r.secondFactorToken ?: "")
-                r.error != null -> throw ApiException(0, message = r.error)
-                r.user != null -> {
-                    // 会话已切换,旧 CSRF 失效
-                    SessionStore.csrfToken = null
-                    r.user
-                }
-                else -> throw ApiException(0, message = "登录失败,请稍后再试")
+        val (code, body) = postForm("/session", form.build())
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        val r = json.decodeFromString(SessionResponseDto.serializer(), body)
+        when {
+            r.secondFactorRequired -> throw SecondFactorRequiredException(r.secondFactorToken ?: "")
+            r.error != null -> throw ApiException(0, message = r.error)
+            r.user != null -> {
+                // 会话已切换,旧 CSRF 失效
+                SessionStore.csrfToken = null
+                r.user
             }
+            else -> throw ApiException(0, message = "登录失败,请稍后再试")
         }
     }
 
     /** 退出登录并清空本地会话 */
-    suspend fun logout(username: String) = withContext(Dispatchers.IO) {
-        val csrf = fetchCsrf()
-        val req = Request.Builder()
-            .url(BASE + "/session/" + username + "/logout")
-            .header("X-Requested-With", "XMLHttpRequest")
-            .header("X-CSRF-Token", csrf)
-            .post(FormBody.Builder().build())
-            .build()
-        client.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) throw httpError(resp.code, resp.body?.string())
-            SessionStore.clear()
-        }
+    suspend fun logout(username: String) {
+        val (code, body) = postForm("/session/" + username + "/logout", FormBody.Builder().build())
+        if (code !in 200..299) throw httpError(code, body)
+        SessionStore.clear()
     }
 
     /** 当前登录用户;未登录(403/404)返回 null */
@@ -226,23 +230,15 @@ object DiscourseApi {
      * 在话题下发布回复(顶层)。需要登录态;失败时抛 [ApiException],
      * message 为服务端文案(如频率限制、无权限)。
      */
-    suspend fun createPost(topicId: Long, raw: String): Unit = withContext(Dispatchers.IO) {
-        val csrf = fetchCsrf()
+    suspend fun createPost(topicId: Long, raw: String) {
         val form = FormBody.Builder()
             .add("topic_id", topicId.toString())
             .add("raw", raw)
             .build()
-        val req = Request.Builder()
-            .url(BASE + "/posts")
-            .header("X-Requested-With", "XMLHttpRequest")
-            .header("X-CSRF-Token", csrf)
-            .post(form)
-            .build()
-        client.newCall(req).execute().use { resp ->
-            val body = resp.body?.string()
-            if (!resp.isSuccessful || body == null) throw httpError(resp.code, body)
-            SessionStore.csrfToken = null
-        }
+        val (code, body) = postForm("/posts", form)
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        // 发帖成功后旧 CSRF 已消费,置空待下次重取
+        SessionStore.csrfToken = null
     }
 
 }

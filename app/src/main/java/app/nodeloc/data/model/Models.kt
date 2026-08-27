@@ -153,6 +153,65 @@ data class PostReplyHistoryDto(
 data class ActionSummaryDto(val id: Int = 0, val count: Int = 0)
 
 @Serializable
+data class LotteryLevelDto(
+    val id: Int = 0,
+    val name: String = "",
+    val prize: String = "",
+    val quantity: Int = 0,
+)
+
+@Serializable
+data class LotteryParticipantDto(
+    val username: String = "",
+    @SerialName("avatar_template") val avatarTemplate: String? = null,
+    val tickets: Int = 0,
+    @SerialName("is_random") val isRandom: Boolean = false,
+)
+
+@Serializable
+data class LotteryWinnerDto(
+    val username: String = "",
+    @SerialName("avatar_template") val avatarTemplate: String? = null,
+    @SerialName("level_name") val levelName: String = "",
+    val prize: String = "",
+)
+
+/** discourse-lottery 插件:与帖子 cooked 正文平行的抽奖组件状态 */
+@Serializable
+data class LotteryDto(
+    val id: Long = 0,
+    val title: String = "",
+    @SerialName("min_participants") val minParticipants: Int = 0,
+    @SerialName("max_participants") val maxParticipants: Int = 0,
+    @SerialName("max_tickets_per_user") val maxTicketsPerUser: Int = 1,
+    @SerialName("min_tickets_per_user") val minTicketsPerUser: Int = 1,
+    @SerialName("draw_at") val drawAt: String = "",
+    /** open / drawn(已开奖) / failed(流抽,未达最低参与门槛) / closed(发起者手动关闭) */
+    val status: String = "open",
+    val levels: List<LotteryLevelDto> = emptyList(),
+    @SerialName("tickets_count") val ticketsCount: Int = 0,
+    @SerialName("participants_count") val participantsCount: Int = 0,
+    @SerialName("user_tickets") val userTickets: Int = 0,
+    @SerialName("is_participating") val isParticipating: Boolean = false,
+    @SerialName("can_draw") val canDraw: Boolean? = null,
+    @SerialName("can_manage") val canManage: Boolean? = null,
+    @SerialName("can_close") val canClose: Boolean? = null,
+    val participants: List<LotteryParticipantDto> = emptyList(),
+    val winners: List<LotteryWinnerDto> = emptyList(),
+) {
+    val isOpen get() = status == "open"
+    val isDrawn get() = status == "drawn"
+    val maxParticipantsDisplay get() = if (maxParticipants >= 1_000_000) "∞" else maxParticipants.toString()
+}
+
+/** POST /lottery/{id}/participate、/draw、/close 的统一响应形态 */
+@Serializable
+data class LotteryActionResultDto(
+    val success: Boolean = false,
+    val message: String? = null,
+)
+
+@Serializable
 data class ReplyToUserDto(
     val id: Int = 0,
     val username: String = "",
@@ -178,6 +237,8 @@ data class PostDto(
     val admin: Boolean = false,
     val moderator: Boolean = false,
     val staff: Boolean = false,
+    /** discourse-lottery 插件:该楼层若挂了抽奖组件则非空,与 cooked 正文平行渲染 */
+    val lottery: LotteryDto? = null,
 ) {
     /** 徽章文案:管理员 → ADMIN,版主 → MOD,其余职员 → STAFF,普通用户无。 */
     val staffBadge: String?

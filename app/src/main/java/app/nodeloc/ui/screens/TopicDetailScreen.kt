@@ -34,6 +34,7 @@ import app.nodeloc.ui.DetailArgs
 import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.CookedText
 import app.nodeloc.ui.components.LoadingMark
+import app.nodeloc.ui.components.LotteryCard
 import app.nodeloc.ui.components.TagChip
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.hexColor
@@ -547,6 +548,9 @@ private fun PostItem(
                 Text(post.username + " · " + post.postNumber + " 楼", style = MaterialTheme.typography.labelSmall,
                     color = nc.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
                 CookedText(post.cooked, Modifier.padding(top = 7.dp))
+                post.lottery?.let { lottery ->
+                    LotteryCard(lottery, Modifier.padding(top = 10.dp))
+                }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
                     Icon(Icons.Filled.FavoriteBorder, "点赞", tint = nc.onSurfaceVariant, modifier = Modifier.size(15.dp))
                     if (likes > 0) { Spacer(Modifier.width(4.dp)); Text(likes.toString(), style = MaterialTheme.typography.labelMedium, color = nc.onSurfaceVariant) }

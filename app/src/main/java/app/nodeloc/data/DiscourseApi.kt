@@ -4,6 +4,8 @@ import app.nodeloc.data.model.CsrfDto
 import app.nodeloc.data.model.CurrentSessionDto
 import app.nodeloc.data.model.CurrentUserDto
 import app.nodeloc.data.model.LatestDto
+import app.nodeloc.data.model.LotteryActionResultDto
+import app.nodeloc.data.model.LotteryDto
 import app.nodeloc.data.model.NestedChildrenDto
 import app.nodeloc.data.model.NestedTopicDto
 import app.nodeloc.data.model.PostReplyHistoryDto
@@ -225,6 +227,34 @@ object DiscourseApi {
     /** 当前楼层的回复来源链，用于展开“回复 @用户”上方预览。 */
     suspend fun replyHistory(postId: Long): PostReplyHistoryDto =
         get("/posts/" + postId + "/reply-history")
+
+    /** discourse-lottery:购票参与。random=true 时服务端随机决定票数("随缘"按钮),quantity 仍需传但会被忽略。 */
+    suspend fun lotteryParticipate(lotteryId: Long, quantity: Int, random: Boolean): LotteryActionResultDto {
+        val form = FormBody.Builder()
+            .add("quantity", quantity.toString())
+            .add("random", random.toString())
+            .build()
+        val (code, body) = postForm("/lottery/$lotteryId/participate", form)
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        return json.decodeFromString(LotteryActionResultDto.serializer(), body)
+    }
+
+    /** discourse-lottery:发起者开奖(需 can_draw) */
+    suspend fun lotteryDraw(lotteryId: Long): LotteryActionResultDto {
+        val (code, body) = postForm("/lottery/$lotteryId/draw", FormBody.Builder().build())
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        return json.decodeFromString(LotteryActionResultDto.serializer(), body)
+    }
+
+    /** discourse-lottery:发起者手动结束抽奖(需 can_close) */
+    suspend fun lotteryClose(lotteryId: Long): LotteryActionResultDto {
+        val (code, body) = postForm("/lottery/$lotteryId/close", FormBody.Builder().build())
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        return json.decodeFromString(LotteryActionResultDto.serializer(), body)
+    }
+
+    /** discourse-lottery:拉取单个抽奖最新状态,用于操作后刷新卡片 */
+    suspend fun lottery(lotteryId: Long): LotteryDto = get("/lottery/$lotteryId")
 
     /**
      * 在话题下发布回复(顶层)。需要登录态;失败时抛 [ApiException],

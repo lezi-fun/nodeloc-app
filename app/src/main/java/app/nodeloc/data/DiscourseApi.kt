@@ -14,6 +14,7 @@ import app.nodeloc.data.model.PostDto
 import app.nodeloc.data.model.PostReplyHistoryDto
 import app.nodeloc.data.model.PostRepliesDto
 import app.nodeloc.data.model.PostsChunkDto
+import app.nodeloc.data.model.RewardActionResultDto
 import app.nodeloc.data.model.SearchDto
 import app.nodeloc.data.model.SessionResponseDto
 import app.nodeloc.data.model.SiteDto
@@ -276,6 +277,18 @@ object DiscourseApi {
     suspend fun toggleReaction(postId: Long, reaction: String): PostDto {
         val encoded = java.net.URLEncoder.encode(reaction, "UTF-8")
         val (code, body) = putForm("/discourse-reactions/posts/$postId/custom-reactions/$encoded/toggle.json")
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        return json.decodeFromString(body)
+    }
+
+    /** discourse-reward:给某楼层打赏能量(站内积分)。amount 为正整数,note 可留空。 */
+    suspend fun giveReward(postId: Long, amount: Int, note: String = ""): RewardActionResultDto {
+        val form = FormBody.Builder()
+            .add("post_id", postId.toString())
+            .add("amount", amount.toString())
+            .add("note", note)
+            .build()
+        val (code, body) = postForm("/reward/give", form)
         if (code !in 200..299 || body == null) throw httpError(code, body)
         return json.decodeFromString(body)
     }

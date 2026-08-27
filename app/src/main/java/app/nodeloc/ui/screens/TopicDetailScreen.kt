@@ -41,6 +41,7 @@ import app.nodeloc.ui.components.MarkdownAction
 import app.nodeloc.ui.components.MarkdownEditingActions
 import app.nodeloc.ui.components.MarkdownToolbar
 import app.nodeloc.ui.components.ReactionButton
+import app.nodeloc.ui.components.RewardDialog
 import app.nodeloc.ui.components.TagChip
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.hexColor
@@ -584,11 +585,40 @@ private fun PostItem(
                 post.lottery?.let { lottery ->
                     LotteryCard(lottery, Modifier.padding(top = 10.dp))
                 }
+                if (post.rewards.isNotEmpty()) {
+                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("⚡", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFFA000))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "已获得 " + post.rewards.sumOf { if (it.isDeduct) -it.amount else it.amount } + " 能量打赏",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = nc.onSurfaceVariant,
+                        )
+                    }
+                }
+                var rewardOpen by remember(post.id) { mutableStateOf(false) }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
+                    if (canReply) {
+                        IconButton(onClick = { rewardOpen = true }, modifier = Modifier.size(20.dp)) {
+                            Text("⚡", style = MaterialTheme.typography.bodyMedium, color = nc.onSurfaceVariant)
+                        }
+                        Spacer(Modifier.width(14.dp))
+                    }
                     ReactionButton(post, canReact = canReply, onUpdated = onReactionUpdated)
                     if (canReply) { Spacer(Modifier.width(22.dp)); Text("回复", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant) }
                     Spacer(Modifier.width(22.dp)); Icon(Icons.Filled.Share, null, tint = nc.onSurfaceVariant, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp)); Text("分享", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
+                }
+                if (rewardOpen) {
+                    RewardDialog(
+                        targetUsername = post.username,
+                        postId = post.id,
+                        onDismiss = { rewardOpen = false },
+                        onRewarded = { reward ->
+                            rewardOpen = false
+                            onReactionUpdated(post.copy(rewards = listOf(reward) + post.rewards))
+                        },
+                    )
                 }
             }
         }

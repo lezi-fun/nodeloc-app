@@ -216,6 +216,26 @@ data class LotteryDto(
     val maxParticipantsDisplay get() = if (maxParticipants >= 1_000_000) "∞" else maxParticipants.toString()
 }
 
+/** discourse-reward:一条打赏记录(能量,即站内积分) */
+@Serializable
+data class RewardDto(
+    val id: Long = 0,
+    val amount: Int = 0,
+    val username: String = "",
+    @SerialName("avatar_template") val avatarTemplate: String? = null,
+    val note: String? = null,
+    @SerialName("is_system_reward") val isSystemReward: Boolean = false,
+    @SerialName("is_deduct") val isDeduct: Boolean = false,
+)
+
+/** POST /reward/give 等接口的响应:成功时带回新增的这一条打赏记录 */
+@Serializable
+data class RewardActionResultDto(
+    val success: Boolean = false,
+    val reward: RewardDto? = null,
+    val message: String? = null,
+)
+
 /** POST /lottery/{id}/participate、/draw、/close 的统一响应形态 */
 @Serializable
 data class LotteryActionResultDto(
@@ -282,6 +302,8 @@ data class PostDto(
     val reactions: List<ReactionSummaryDto> = emptyList(),
     /** discourse-reactions:当前登录用户对该楼层已选择的反应,未反应时为 null */
     @SerialName("current_user_reaction") val currentUserReaction: CurrentUserReactionDto? = null,
+    /** discourse-reward:该楼层已收到的打赏记录,最新的排在最前(与官网一致) */
+    val rewards: List<RewardDto> = emptyList(),
 ) {
     /** 徽章文案:管理员 → ADMIN,版主 → MOD,其余职员 → STAFF,普通用户无。 */
     val staffBadge: String?

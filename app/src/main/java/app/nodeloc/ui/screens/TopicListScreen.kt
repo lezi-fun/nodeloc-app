@@ -56,6 +56,7 @@ import app.nodeloc.data.model.TopicDto
 import app.nodeloc.data.model.UserDto
 import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.LoadingMark
+import app.nodeloc.ui.components.TagChip
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.hexColor
 import kotlinx.coroutines.delay
@@ -321,6 +322,10 @@ private fun TopicRow(t: TopicDto, op: UserDto?, cat: CategoryDto?, onClick: () -
                         Spacer(Modifier.width(5.dp))
                         Text(c.name, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = nc.onSurfaceVariant)
                         Spacer(Modifier.width(9.dp))
+                    }
+                    t.tags.forEach { tag ->
+                        TagChip(tag.name)
+                        Spacer(Modifier.width(5.dp))
                     }
                     Text(
                         (t.postsCount - 1).coerceAtLeast(0).toString() + " 回复",

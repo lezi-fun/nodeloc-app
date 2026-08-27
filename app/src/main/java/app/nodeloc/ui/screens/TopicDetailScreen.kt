@@ -1,10 +1,12 @@
 package app.nodeloc.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,6 +34,7 @@ import app.nodeloc.ui.DetailArgs
 import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.CookedText
 import app.nodeloc.ui.components.LoadingMark
+import app.nodeloc.ui.components.TagChip
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.hexColor
 import kotlinx.coroutines.flow.collectLatest
@@ -274,12 +277,19 @@ fun TopicDetailScreen(args: DetailArgs, onBack: () -> Unit, onOpenLogin: () -> U
         HorizontalDivider(color = nc.outlineVariant)
 
         Row(
-            Modifier.fillMaxWidth().background(nc.headerBg).padding(horizontal = 18.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .background(nc.headerBg)
+                .padding(horizontal = 18.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.size(8.dp).background(hexColor(catColor), CircleShape))
             Spacer(Modifier.width(6.dp))
             Text(catName ?: "", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
+            (state as? DetailState.Ready)?.detail?.tags.orEmpty().forEach { tag ->
+                Spacer(Modifier.width(7.dp))
+                TagChip(tag.name)
+            }
             Spacer(Modifier.width(12.dp))
             (state as? DetailState.Ready)?.detail?.let { detail ->
                 Text(

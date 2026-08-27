@@ -2,6 +2,12 @@ package app.nodeloc.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonTransformingSerializer
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 @Serializable
 data class LatestDto(
@@ -55,6 +61,18 @@ data class CsrfDto(val csrf: String = "")
 @Serializable
 data class PosterRef(val user_id: Int = 0)
 
+/**
+ * 话题标签。NodeLoc 定制端下发对象数组 [{id,name,slug}],
+ * 标准 Discourse 为字符串数组,序列化器对两者兼容。
+ */
+@Serializable(with = TagDtoSerializer::class)
+data class TagDto(val id: Int = 0, val name: String = "", val slug: String = "")
+
+object TagDtoSerializer : JsonTransformingSerializer<TagDto>(TagDto.serializer()) {
+    override fun transformDeserialize(element: JsonElement): JsonElement =
+        if (element is JsonPrimitive) buildJsonObject { put("name", element.jsonPrimitive) } else element
+}
+
 @Serializable
 data class TopicDto(
     val id: Long,
@@ -71,6 +89,7 @@ data class TopicDto(
     @SerialName("has_read_permission_restriction") val hasReadPermissionRestriction: Boolean = false,
     @SerialName("read_permission_trust_level") val readPermissionTrustLevel: Int? = null,
     val posters: List<PosterRef> = emptyList(),
+    val tags: List<TagDto> = emptyList(),
 ) {
     val isPinned get() = pinned || pinnedGlobally
 }
@@ -85,6 +104,7 @@ data class TopicDetailDto(
     @SerialName("category_id") val categoryId: Int = 0,
     @SerialName("is_nested_view") val isNestedView: Boolean = false,
     @SerialName("post_stream") val postStream: PostStreamDto = PostStreamDto(),
+    val tags: List<TagDto> = emptyList(),
 )
 
 @Serializable

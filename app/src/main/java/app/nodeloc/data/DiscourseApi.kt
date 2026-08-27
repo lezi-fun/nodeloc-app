@@ -13,6 +13,7 @@ import app.nodeloc.data.model.NestedChildrenDto
 import app.nodeloc.data.model.NestedTopicDto
 import app.nodeloc.data.model.PostDto
 import app.nodeloc.data.model.PostCookedDto
+import app.nodeloc.data.model.PostEditResponseDto
 import app.nodeloc.data.model.PostReplyHistoryDto
 import app.nodeloc.data.model.PostRepliesDto
 import app.nodeloc.data.model.PostsChunkDto
@@ -280,6 +281,22 @@ object DiscourseApi {
 
     /** 内容本地化"查看原文":与官网一致,每次调用在原文/译文之间切换,不是幂等的单向操作。 */
     suspend fun postOriginalCooked(postId: Long): String = get<PostCookedDto>("/posts/$postId/cooked.json").cooked
+
+    /**
+     * 编辑楼层正文。[originalRaw] 是编辑前拿到的原文,服务端用它做冲突检测(官网字段名 original_text)。
+     * 成功返回楼层最新完整 PostDto,直接替换本地缓存即可同步 UI。
+     */
+    suspend fun editPost(postId: Long, topicId: Long, raw: String, originalRaw: String): PostDto {
+        val form = FormBody.Builder()
+            .add("post[raw]", raw)
+            .add("post[topic_id]", topicId.toString())
+            .add("post[original_text]", originalRaw)
+            .add("post[edit_reason]", "")
+            .build()
+        val (code, body) = putForm("/posts/$postId", form)
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        return json.decodeFromString<PostEditResponseDto>(body).post
+    }
 
     suspend fun userProfile(username: String): UserProfileDto = get<UserProfileResponseDto>("/u/$username.json").user
 

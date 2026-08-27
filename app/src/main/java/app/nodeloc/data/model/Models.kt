@@ -261,6 +261,10 @@ data class GifResultDto(
 @Serializable
 data class PostCookedDto(val cooked: String = "")
 
+/** PUT /posts/{id} 响应的顶层容器 */
+@Serializable
+data class PostEditResponseDto(val post: PostDto)
+
 /** GET /gifs/search.json 响应:next 为空字符串或缺省表示没有下一页 */
 @Serializable
 data class GifSearchDto(
@@ -284,6 +288,7 @@ data class ReplyToUserDto(
 @Serializable
 data class PostDto(
     val id: Long = 0,
+    @SerialName("topic_id") val topicId: Long = 0,
     val username: String = "",
     @SerialName("avatar_template") val avatarTemplate: String? = null,
     @SerialName("post_number") val postNumber: Int = 0,
@@ -314,6 +319,10 @@ data class PostDto(
     val locale: String? = null,
     /** true 表示当前 cooked 是自动翻译结果(非楼主原文语言),需展示"查看原文"提示条 */
     @SerialName("is_localized") val isLocalized: Boolean = false,
+    /** 未渲染的 Markdown 源码;仅本人帖子且已登录时非空,用于填充编辑框 */
+    val raw: String? = null,
+    /** 当前用户是否有权编辑此楼层 */
+    @SerialName("can_edit") val canEdit: Boolean = false,
 ) {
     /** 徽章文案:管理员 → ADMIN,版主 → MOD,其余职员 → STAFF,普通用户无。 */
     val staffBadge: String?

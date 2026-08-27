@@ -37,6 +37,7 @@ import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.BadgeTitleText
 import app.nodeloc.ui.components.CookedText
 import app.nodeloc.ui.components.LoadingMark
+import app.nodeloc.ui.components.EditPostDialog
 import app.nodeloc.ui.components.GifSearchSheet
 import app.nodeloc.ui.components.LotteryCard
 import app.nodeloc.ui.components.MarkdownAction
@@ -659,6 +660,7 @@ private fun PostItem(
                     }
                 }
                 var rewardOpen by remember(post.id) { mutableStateOf(false) }
+                var editOpen by remember(post.id) { mutableStateOf(false) }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
                     if (canReply) {
                         IconButton(onClick = { rewardOpen = true }, modifier = Modifier.size(20.dp)) {
@@ -670,6 +672,12 @@ private fun PostItem(
                     if (canReply) { Spacer(Modifier.width(22.dp)); Text("回复", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant) }
                     Spacer(Modifier.width(22.dp)); Icon(Icons.Filled.Share, null, tint = nc.onSurfaceVariant, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp)); Text("分享", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
+                    if (post.canEdit) {
+                        Spacer(Modifier.width(22.dp))
+                        IconButton(onClick = { editOpen = true }, modifier = Modifier.size(20.dp)) {
+                            Icon(Icons.Filled.Edit, "编辑此帖子", tint = nc.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                        }
+                    }
                 }
                 if (rewardOpen) {
                     RewardDialog(
@@ -679,6 +687,16 @@ private fun PostItem(
                         onRewarded = { reward ->
                             rewardOpen = false
                             onReactionUpdated(post.copy(rewards = listOf(reward) + post.rewards))
+                        },
+                    )
+                }
+                if (editOpen) {
+                    EditPostDialog(
+                        post = post,
+                        onDismiss = { editOpen = false },
+                        onEdited = { updated ->
+                            editOpen = false
+                            onReactionUpdated(updated)
                         },
                     )
                 }

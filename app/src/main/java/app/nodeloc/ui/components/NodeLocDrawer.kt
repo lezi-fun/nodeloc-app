@@ -113,7 +113,8 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}) {
                         Column {
                             Text(user.username, fontWeight = FontWeight.Bold)
                             Text(
-                                "信任等级 TL" + user.trustLevel + if (user.admin) " · 管理员" else if (user.moderator) " · 版主" else "",
+                                app.nodeloc.util.TrustLevelNames.displayName(user.trustLevel) +
+                                    if (user.admin) " · 管理员" else if (user.moderator) " · 版主" else "",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = nc.onSurfaceVariant,
                             )

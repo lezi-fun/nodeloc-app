@@ -1,7 +1,12 @@
 package app.nodeloc.data.model
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonTransformingSerializer
@@ -65,12 +70,27 @@ data class PosterRef(val user_id: Int = 0)
  * 话题标签。NodeLoc 定制端下发对象数组 [{id,name,slug}],
  * 标准 Discourse 为字符串数组,序列化器对两者兼容。
  */
-@Serializable(with = TagDtoSerializer::class)
+@Serializable
 data class TagDto(val id: Int = 0, val name: String = "", val slug: String = "")
 
+/**
+ * 注意:不要在 TagDto 类声明上加 @Serializable(with = TagDtoSerializer::class)。
+ * 那样会让 TagDto.serializer() 反过来返回 TagDtoSerializer 自己,而这里的父类构造函数
+ * 又需要调用 TagDto.serializer() 取内部序列化器,形成循环初始化,运行时会在类加载阶段
+ * 直接抛 NullPointerException(JVM 处理静态初始化循环依赖的经典陷阱)。
+ * 正确做法是只在使用处(见 TopicDto.tags/TopicDetailDto.tags 字段)标注 @Serializable(with=...)。
+ */
 object TagDtoSerializer : JsonTransformingSerializer<TagDto>(TagDto.serializer()) {
     override fun transformDeserialize(element: JsonElement): JsonElement =
         if (element is JsonPrimitive) buildJsonObject { put("name", element.jsonPrimitive) } else element
+}
+
+/** List<TagDto> 属性专用:逐元素套用 [TagDtoSerializer] 的兼容规则,用在 tags 字段上。 */
+object TagDtoListSerializer : KSerializer<List<TagDto>> {
+    private val delegate = ListSerializer(TagDtoSerializer)
+    override val descriptor: SerialDescriptor = delegate.descriptor
+    override fun serialize(encoder: Encoder, value: List<TagDto>) = delegate.serialize(encoder, value)
+    override fun deserialize(decoder: Decoder): List<TagDto> = delegate.deserialize(decoder)
 }
 
 @Serializable
@@ -89,7 +109,7 @@ data class TopicDto(
     @SerialName("has_read_permission_restriction") val hasReadPermissionRestriction: Boolean = false,
     @SerialName("read_permission_trust_level") val readPermissionTrustLevel: Int? = null,
     val posters: List<PosterRef> = emptyList(),
-    val tags: List<TagDto> = emptyList(),
+    @Serializable(with = TagDtoListSerializer::class) val tags: List<TagDto> = emptyList(),
 ) {
     val isPinned get() = pinned || pinnedGlobally
 }
@@ -104,7 +124,7 @@ data class TopicDetailDto(
     @SerialName("category_id") val categoryId: Int = 0,
     @SerialName("is_nested_view") val isNestedView: Boolean = false,
     @SerialName("post_stream") val postStream: PostStreamDto = PostStreamDto(),
-    val tags: List<TagDto> = emptyList(),
+    @Serializable(with = TagDtoListSerializer::class) val tags: List<TagDto> = emptyList(),
 )
 
 @Serializable

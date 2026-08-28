@@ -48,27 +48,51 @@ import app.nodeloc.data.DiscourseApi
 import app.nodeloc.data.SessionRepo
 import app.nodeloc.data.SiteRepo
 import app.nodeloc.data.model.CategoryDto
+import app.nodeloc.data.model.RecentAppDto
+import app.nodeloc.data.model.TagDto
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.absoluteUrl
 import app.nodeloc.util.hexColor
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
-/** 抽屉展示的节点(分类):取站点上传了图标的节点,按官网侧栏顺序展示 */
+private val topicIdInUrl = Regex("""/t/[^/]+/(\d+)""")
+
+/**
+ * 抽屉内容跟随服务端配置:节点/标签取自当前用户的 sidebar_category_ids / sidebar_tags
+ * (与官网侧栏一致,登录用户在官网侧栏设置里选的是哪些,这里就显示哪些),未登录或用户
+ * 没有自定义标签时回退到站点默认(有图标的节点 / 站点热门标签)。
+ */
 @Composable
-fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}) {
+fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopicId: (Long) -> Unit = {}) {
     val nc = LocalNodelocColors.current
     // svg 解码由全局 ImageLoader(NodelocApp)提供
     var nodes by remember { mutableStateOf<List<CategoryDto>>(emptyList()) }
+    var tags by remember { mutableStateOf<List<TagDto>>(emptyList()) }
     val me by SessionRepo.currentUser.collectAsState()
     var showLogout by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) {
-        nodes = runCatching { SiteRepo.categories().values.toList() }
-            .getOrDefault(emptyList())
-            .filter { !it.uploadedLogo?.url.isNullOrBlank() }
-            .sortedBy { it.position }
-            .take(14)
+    LaunchedEffect(me?.id) {
+        val allCategories = runCatching { SiteRepo.categories().values.toList() }.getOrDefault(emptyList())
+        val sidebarIds = me?.sidebarCategoryIds.orEmpty()
+        nodes = if (sidebarIds.isNotEmpty()) {
+            allCategories.filter { it.id in sidebarIds }.sortedBy { it.position }
+        } else {
+            allCategories.filter { !it.uploadedLogo?.url.isNullOrBlank() }.sortedBy { it.position }.take(14)
+        }
+        val sidebarTagNames = me?.sidebarTags.orEmpty()
+        tags = if (sidebarTagNames.isNotEmpty()) {
+            sidebarTagNames.map { TagDto(name = it, slug = it) }
+        } else {
+            runCatching { SiteRepo.topTags() }.getOrDefault(emptyList()).take(5)
+        }
+    }
+
+    fun openApp(app: RecentAppDto) {
+        topicIdInUrl.find(app.url)?.groupValues?.get(1)?.toLongOrNull()?.let { id ->
+            onClose()
+            onOpenTopicId(id)
+        }
     }
 
     ModalDrawerSheet(
@@ -148,7 +172,19 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}) {
             DrawerEntry("常见问题", Icons.Filled.Info, onClose)
             DrawerEntry("开放登录", Icons.Filled.Info, onClose)
 
-            DrawerSectionTitle("分类")
+            if (me?.recentApps?.isNotEmpty() == true) {
+                DrawerSectionTitle("小程序")
+                me?.recentApps.orEmpty().forEach { app ->
+                    CategoryEntry(
+                        text = app.name,
+                        color = nc.primary,
+                        logoUrl = app.logoUrl?.let { absoluteUrl(it, DiscourseApi.BASE) },
+                        onClick = { openApp(app) },
+                    )
+                }
+            }
+
+            DrawerSectionTitle("节点")
             nodes.forEach { cat ->
                 CategoryEntry(
                     text = cat.name,
@@ -158,10 +194,13 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}) {
                 )
             }
 
-            DrawerSectionTitle("标签")
-            DrawerEntry("AI", Icons.Filled.Info, onClose)
-            DrawerEntry("VPS", Icons.Filled.Info, onClose)
-            DrawerEntry("所有标签", Icons.Filled.Info, onClose)
+            if (tags.isNotEmpty()) {
+                DrawerSectionTitle("标签")
+                tags.forEach { tag ->
+                    DrawerEntry(tag.name, Icons.Filled.Info, onClose)
+                }
+                DrawerEntry("所有标签", Icons.Filled.Info, onClose)
+            }
         }
     }
 

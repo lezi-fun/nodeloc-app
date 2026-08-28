@@ -1,21 +1,44 @@
 package app.nodeloc.data
 
 import app.nodeloc.data.model.CategoryDto
+import app.nodeloc.data.model.PostActionTypeDto
+import app.nodeloc.data.model.TagDto
 import app.nodeloc.util.absoluteUrl
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
 
-/** 站点元数据(分类色等),进程内缓存 */
+/** 站点元数据(分类色、热门标签、举报操作类型等),进程内缓存 */
 object SiteRepo {
     @Volatile private var categories: Map<Int, CategoryDto>? = null
+    @Volatile private var topTags: List<TagDto>? = null
+    @Volatile private var postActionTypes: List<PostActionTypeDto>? = null
+
+    private suspend fun loadSite() {
+        if (categories != null && topTags != null && postActionTypes != null) return
+        val site = runCatching { DiscourseApi.site() }.getOrNull() ?: return
+        categories = site.categories.associateBy { it.id }
+        topTags = site.topTags
+        postActionTypes = site.postActionTypes
+    }
 
     suspend fun categories(): Map<Int, CategoryDto> {
-        categories?.let { return it }
-        return runCatching { DiscourseApi.site().categories.associateBy { it.id } }
-            .getOrNull()?.also { categories = it } ?: emptyMap()
+        loadSite()
+        return categories ?: emptyMap()
     }
 
     suspend fun category(id: Int): CategoryDto? = categories()[id]
+
+    /** 侧栏"标签"区块回退展示用的站点热门标签(用户没有自定义 sidebar_tags 时) */
+    suspend fun topTags(): List<TagDto> {
+        loadSite()
+        return topTags ?: emptyList()
+    }
+
+    /** 举报菜单文案/是否需要补充说明的定义来源,与楼层的 actionsSummary 联合驱动"能做什么" */
+    suspend fun postActionTypes(): List<PostActionTypeDto> {
+        loadSite()
+        return postActionTypes ?: emptyList()
+    }
 
     /**
      * `avatar_template` 形如 `/user_avatar/www.nodeloc.com/xx/{size}/123_2.png`,

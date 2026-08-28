@@ -27,12 +27,38 @@ data class TopicListDto(
     @SerialName("per_page") val perPage: Int? = null,
 )
 
+/** GET /c/{id}.json 与 GET /topics/private-messages/{username}.json 共用的顶层容器 */
+@Serializable
+data class CategoryTopicsResponseDto(@SerialName("topic_list") val topicList: TopicListDto = TopicListDto())
+
+/** 私信收件箱列表一条:与公开话题字段不同(无 category,带对方最新发帖人与未读数) */
+@Serializable
+data class PmTopicDto(
+    val id: Long,
+    val title: String,
+    @SerialName("posts_count") val postsCount: Int = 0,
+    @SerialName("bumped_at") val bumpedAt: String = "",
+    val excerpt: String? = null,
+    @SerialName("last_poster_username") val lastPosterUsername: String = "",
+    val unread: Int = 0,
+)
+
+@Serializable
+data class PmTopicListDto(val topics: List<PmTopicDto> = emptyList())
+
+@Serializable
+data class PmListResponseDto(@SerialName("topic_list") val topicList: PmTopicListDto = PmTopicListDto())
+
 @Serializable
 data class UserDto(
     val id: Int,
     val username: String,
     @SerialName("avatar_template") val avatarTemplate: String? = null,
 )
+
+/** GET /u/search/users.json 响应,私信收件人实时联想用 */
+@Serializable
+data class UserSearchDto(val users: List<UserDto> = emptyList())
 
 /** /session/current.json 与登录成功返回的当前用户 */
 @Serializable
@@ -45,6 +71,22 @@ data class CurrentUserDto(
     @SerialName("unread_high_priority_notifications") val unreadHighPriorityNotifications: Int = 0,
     val admin: Boolean = false,
     val moderator: Boolean = false,
+    /** 侧栏"节点"区块要展示哪些分类,由用户在官网侧栏设置里选定,服务端下发 */
+    @SerialName("sidebar_category_ids") val sidebarCategoryIds: List<Int> = emptyList(),
+    /** 侧栏"标签"区块的自定义标签;为空时前端回退到站点热门标签 */
+    @SerialName("sidebar_tags") val sidebarTags: List<String> = emptyList(),
+    /** 侧栏"小程序"区块:最近使用过的小程序话题 */
+    @SerialName("recent_apps") val recentApps: List<RecentAppDto> = emptyList(),
+)
+
+/** 侧栏"小程序"条目,对应 discourse_apps 插件的最近使用记录 */
+@Serializable
+data class RecentAppDto(
+    val id: Int = 0,
+    val slug: String = "",
+    val name: String = "",
+    @SerialName("logo_url") val logoUrl: String? = null,
+    val url: String = "",
 )
 
 @Serializable
@@ -169,8 +211,19 @@ data class PostReplyHistoryDto(
     @SerialName("post_reply_histories") val posts: List<PostDto> = emptyList(),
 )
 
+/**
+ * 楼层可执行操作汇总(GET /t/{id}.json 的 posts[].actions_summary):每个 id 对应
+ * /site.json 里 post_action_types 的一种操作(2=赞、3=偏离话题、4=不当言论...)。
+ * [canAct] 为真表示当前登录用户当下可以对这条楼层执行该操作——比如本人帖子的
+ * "赞"(id=2)没有 can_act,因为不能给自己点赞;未登录或已经点过赞时同样没有 can_act。
+ * [count] 仅点赞(id=2)才有意义,是当前的赞数。
+ */
 @Serializable
-data class ActionSummaryDto(val id: Int = 0, val count: Int = 0)
+data class ActionSummaryDto(
+    val id: Int = 0,
+    val count: Int = 0,
+    @SerialName("can_act") val canAct: Boolean = false,
+)
 
 /** discourse-reactions:某一种表情反应的汇总计数,id 是表情键名(heart/+1/laughing/...) */
 @Serializable
@@ -298,6 +351,10 @@ data class CreatedPostDto(
     @SerialName("topic_id") val topicId: Long = 0,
 )
 
+/** POST /bookmarks.json 成功响应,取书签 id 供取消收藏时使用 */
+@Serializable
+data class BookmarkCreatedDto(val id: Long = 0)
+
 @Serializable
 data class ReplyToUserDto(
     val id: Int = 0,
@@ -343,6 +400,16 @@ data class PostDto(
     val raw: String? = null,
     /** 当前用户是否有权编辑此楼层 */
     @SerialName("can_edit") val canEdit: Boolean = false,
+    /** 是否为当前登录用户本人所发 */
+    val yours: Boolean = false,
+    /** 当前用户是否有权删除此楼层(含管理员/版主删除他人帖子的情形) */
+    @SerialName("can_delete") val canDelete: Boolean = false,
+    /** 楼层已被删除且当前用户有权恢复 */
+    @SerialName("can_recover") val canRecover: Boolean = false,
+    /** 是否已被当前用户加入书签 */
+    val bookmarked: Boolean = false,
+    /** 书签记录 id,取消书签(DELETE /bookmarks/{id}.json)时需要 */
+    @SerialName("bookmark_id") val bookmarkId: Long? = null,
 ) {
     /** 徽章文案:管理员 → ADMIN,版主 → MOD,其余职员 → STAFF,普通用户无。 */
     val staffBadge: String?
@@ -355,7 +422,23 @@ data class PostDto(
 }
 
 @Serializable
-data class SiteDto(val categories: List<CategoryDto> = emptyList())
+data class SiteDto(
+    val categories: List<CategoryDto> = emptyList(),
+    /** 站点热门标签,侧栏"标签"区块在用户没有自定义标签时的回退展示 */
+    @SerialName("top_tags") val topTags: List<TagDto> = emptyList(),
+    /** 全站可用的举报/操作类型定义,举报菜单的文案和"是否需要补充说明"都从这里取,不写死 */
+    @SerialName("post_action_types") val postActionTypes: List<PostActionTypeDto> = emptyList(),
+)
+
+/** /site.json 的 post_action_types 一条:定义一种可对楼层执行的操作(赞/举报的各细分原因) */
+@Serializable
+data class PostActionTypeDto(
+    val id: Int = 0,
+    val name: String = "",
+    @SerialName("is_flag") val isFlag: Boolean = false,
+    @SerialName("require_message") val requireMessage: Boolean = false,
+    @SerialName("applies_to") val appliesTo: List<String> = emptyList(),
+)
 
 @Serializable
 data class CategoryDto(
@@ -367,6 +450,9 @@ data class CategoryDto(
     val position: Int = 0,
     /** 分类自定义图标(站点为多数节点上传了 svg/png logo) */
     @SerialName("uploaded_logo") val uploadedLogo: UploadedLogoDto? = null,
+    /** 非空表示这是某个顶级节点下的子节点 */
+    @SerialName("parent_category_id") val parentCategoryId: Int? = null,
+    @SerialName("topic_count") val topicCount: Int = 0,
 )
 
 @Serializable

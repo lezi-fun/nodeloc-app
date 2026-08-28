@@ -5,6 +5,9 @@ dist/
 # 本地 CLI 状态(不应入仓)
 /.local/
 
+# Playwright MCP 调研过程留下的浏览器快照/日志
+/.playwright-mcp/
+
 # Gradle files
 .gradle/
 build/

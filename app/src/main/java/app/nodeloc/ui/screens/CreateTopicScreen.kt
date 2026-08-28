@@ -10,23 +10,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -46,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import app.nodeloc.data.DiscourseApi
 import app.nodeloc.data.SiteRepo
 import app.nodeloc.data.model.CategoryDto
+import app.nodeloc.ui.components.CategoryDot
+import app.nodeloc.ui.components.CategoryPickerSheet
 import app.nodeloc.ui.components.GifSearchSheet
 import app.nodeloc.ui.components.MarkdownAction
 import app.nodeloc.ui.components.MarkdownEditingActions
@@ -117,40 +115,36 @@ fun CreateTopicScreen(onBack: () -> Unit, onCreated: (Long) -> Unit) {
         }
         HorizontalDivider(color = nc.outlineVariant)
 
-        ExposedDropdownMenuBox(
-            expanded = categoryMenuOpen,
-            onExpandedChange = { categoryMenuOpen = it },
+        Surface(
+            onClick = { categoryMenuOpen = true },
+            shape = RoundedCornerShape(10.dp),
+            color = nc.background,
+            border = BorderStroke(1.dp, nc.outlineVariant),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
         ) {
-            OutlinedTextField(
-                value = selectedCategory?.name ?: "选择节点…",
-                onValueChange = {},
-                readOnly = true,
-                trailingIcon = { Icon(Icons.Filled.ArrowDropDown, null, tint = nc.onSurfaceVariant) },
-                shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = nc.outlineVariant,
-                    focusedBorderColor = nc.primary,
-                ),
-                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
-            )
-            ExposedDropdownMenu(
-                expanded = categoryMenuOpen,
-                onDismissRequest = { categoryMenuOpen = false },
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                categories.forEach { cat ->
-                    DropdownMenuItem(
-                        text = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.size(8.dp).background(app.nodeloc.util.hexColor(cat.color), CircleShape))
-                                Spacer(Modifier.width(8.dp))
-                                Text(cat.name)
-                            }
-                        },
-                        onClick = { selectedCategory = cat; categoryMenuOpen = false },
-                    )
+                selectedCategory?.let { cat ->
+                    CategoryDot(cat, size = 18.dp)
+                    Spacer(Modifier.width(8.dp))
                 }
+                Text(
+                    selectedCategory?.name ?: "选择节点…",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (selectedCategory == null) nc.onSurfaceVariant else nc.onBackground,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(Icons.Filled.ArrowDropDown, null, tint = nc.onSurfaceVariant)
             }
+        }
+        if (categoryMenuOpen) {
+            CategoryPickerSheet(
+                categories = categories,
+                onDismiss = { categoryMenuOpen = false },
+                onPick = { cat -> selectedCategory = cat; categoryMenuOpen = false },
+            )
         }
 
         OutlinedTextField(

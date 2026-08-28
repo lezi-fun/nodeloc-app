@@ -35,6 +35,7 @@ import app.nodeloc.data.model.TopicDetailDto
 import app.nodeloc.ui.DetailArgs
 import app.nodeloc.ui.components.Avatar
 import app.nodeloc.ui.components.BadgeTitleText
+import app.nodeloc.ui.components.CategoryDot
 import app.nodeloc.ui.components.CookedText
 import app.nodeloc.ui.components.LoadingMark
 import app.nodeloc.ui.components.EditPostDialog
@@ -326,10 +327,9 @@ fun TopicDetailScreen(
         }
     }
 
-    var catName by remember(args.id) { mutableStateOf<String?>(null) }
-    var catColor by remember(args.id) { mutableStateOf("#0088CC") }
+    var category by remember(args.id) { mutableStateOf<app.nodeloc.data.model.CategoryDto?>(null) }
     LaunchedEffect(args.categoryId) {
-        SiteRepo.category(args.categoryId)?.let { catName = it.name; catColor = "#" + it.color }
+        category = SiteRepo.category(args.categoryId)
     }
 
     Column(Modifier.fillMaxSize().background(nc.background)) {
@@ -362,9 +362,9 @@ fun TopicDetailScreen(
                 .padding(horizontal = 18.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(8.dp).background(hexColor(catColor), CircleShape))
+            CategoryDot(category, size = 14.dp)
             Spacer(Modifier.width(6.dp))
-            Text(catName ?: "", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
+            Text(category?.name ?: "", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
             (state as? DetailState.Ready)?.detail?.tags.orEmpty().forEach { tag ->
                 Spacer(Modifier.width(7.dp))
                 TagChip(tag.name)

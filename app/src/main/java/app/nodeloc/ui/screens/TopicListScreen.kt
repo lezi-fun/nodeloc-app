@@ -57,6 +57,7 @@ import app.nodeloc.data.model.CategoryDto
 import app.nodeloc.data.model.TopicDto
 import app.nodeloc.data.model.UserDto
 import app.nodeloc.ui.components.Avatar
+import app.nodeloc.ui.components.CategoryDot
 import app.nodeloc.ui.components.LoadingMark
 import app.nodeloc.ui.components.TagChip
 import app.nodeloc.ui.theme.LocalNodelocColors
@@ -374,7 +375,7 @@ private fun TopicRow(t: TopicDto, op: UserDto?, cat: CategoryDto?, onClick: () -
                 Spacer(Modifier.height(7.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     cat?.let { c ->
-                        Box(Modifier.size(8.dp).background(hexColor(c.color), CircleShape))
+                        CategoryDot(c, size = 13.dp)
                         Spacer(Modifier.width(5.dp))
                         Text(c.name, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = nc.onSurfaceVariant)
                         Spacer(Modifier.width(9.dp))

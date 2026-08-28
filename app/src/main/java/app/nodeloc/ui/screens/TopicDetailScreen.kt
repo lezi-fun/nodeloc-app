@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -19,9 +20,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -44,6 +48,7 @@ import app.nodeloc.ui.components.LotteryCard
 import app.nodeloc.ui.components.MarkdownAction
 import app.nodeloc.ui.components.MarkdownEditingActions
 import app.nodeloc.ui.components.MarkdownToolbar
+import app.nodeloc.ui.components.PostActionsSheet
 import app.nodeloc.ui.components.ReactionButton
 import app.nodeloc.ui.components.RewardDialog
 import app.nodeloc.ui.components.TagChip
@@ -112,10 +117,21 @@ fun TopicDetailScreen(
     }
 
     // 底部回复栏:Markdown 编辑器(工具栏+文本框)、发送中与发送失败文案
+    val replyFocusRequester = remember(args.id) { FocusRequester() }
     var replyField by remember(args.id) { mutableStateOf(TextFieldValue("")) }
     var sending by remember(args.id) { mutableStateOf(false) }
     var replyError by remember(args.id) { mutableStateOf<String?>(null) }
     var gifSheetOpen by remember(args.id) { mutableStateOf(false) }
+
+    /** 官网点击楼层"回复"按钮的行为:预填 @对方用户名,再把焦点带到底部编辑器 */
+    fun replyToUser(username: String) {
+        val mention = "@$username "
+        if (!replyField.text.startsWith(mention)) {
+            val text = mention + replyField.text
+            replyField = TextFieldValue(text, TextRange(text.length))
+        }
+        runCatching { replyFocusRequester.requestFocus() }
+    }
 
     fun sendReply() {
         val text = replyField.text.trim()
@@ -471,6 +487,9 @@ fun TopicDetailScreen(
                         onReactionUpdated = ::updatePost,
                         onOpenProfile = onOpenProfile,
                         badgeStyles = badgeStyles,
+                        topicSlug = current.detail.slug,
+                        onPostDeleted = { reloadToken++ },
+                        onReply = ::replyToUser,
                     )
                     HorizontalDivider(color = nc.outlineVariant)
                 }
@@ -525,7 +544,7 @@ fun TopicDetailScreen(
                                 unfocusedBorderColor = nc.outlineVariant,
                                 focusedBorderColor = nc.primary,
                             ),
-                            modifier = Modifier.weight(1f).heightIn(min = 42.dp),
+                            modifier = Modifier.weight(1f).heightIn(min = 42.dp).focusRequester(replyFocusRequester),
                         )
                         Spacer(Modifier.width(10.dp))
                         FilledIconButton(
@@ -599,6 +618,9 @@ private fun PostItem(
     onReactionUpdated: (PostDto) -> Unit,
     onOpenProfile: (String) -> Unit,
     badgeStyles: List<app.nodeloc.data.model.BadgeStyleDto>,
+    topicSlug: String,
+    onPostDeleted: () -> Unit,
+    onReply: (String) -> Unit,
 ) {
     val post = item.post
     val nc = LocalNodelocColors.current
@@ -708,6 +730,7 @@ private fun PostItem(
                 }
                 var rewardOpen by remember(post.id) { mutableStateOf(false) }
                 var editOpen by remember(post.id) { mutableStateOf(false) }
+                var actionsOpen by remember(post.id) { mutableStateOf(false) }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
                     if (canReply) {
                         IconButton(onClick = { rewardOpen = true }, modifier = Modifier.size(20.dp)) {
@@ -716,15 +739,26 @@ private fun PostItem(
                         Spacer(Modifier.width(14.dp))
                     }
                     ReactionButton(post, canReact = canReply, onUpdated = onReactionUpdated)
-                    if (canReply) { Spacer(Modifier.width(22.dp)); Text("回复", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant) }
-                    Spacer(Modifier.width(22.dp)); Icon(Icons.Filled.Share, null, tint = nc.onSurfaceVariant, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp)); Text("分享", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = nc.onSurfaceVariant)
-                    if (post.canEdit) {
+                    if (canReply) {
                         Spacer(Modifier.width(22.dp))
-                        IconButton(onClick = { editOpen = true }, modifier = Modifier.size(20.dp)) {
-                            Icon(Icons.Filled.Edit, "编辑此帖子", tint = nc.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                        IconButton(onClick = { onReply(post.username) }, modifier = Modifier.size(20.dp)) {
+                            Icon(Icons.AutoMirrored.Filled.Reply, "回复", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
                         }
                     }
+                    Spacer(Modifier.width(22.dp))
+                    IconButton(onClick = { actionsOpen = true }, modifier = Modifier.size(20.dp)) {
+                        Icon(Icons.Filled.MoreHoriz, "更多操作", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                    }
+                }
+                if (actionsOpen) {
+                    PostActionsSheet(
+                        post = post,
+                        topicSlug = topicSlug,
+                        onDismiss = { actionsOpen = false },
+                        onEdit = { editOpen = true },
+                        onUpdated = onReactionUpdated,
+                        onNeedsReload = { actionsOpen = false; onPostDeleted() },
+                    )
                 }
                 if (rewardOpen) {
                     RewardDialog(

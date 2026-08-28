@@ -4,6 +4,7 @@ import app.nodeloc.data.model.CsrfDto
 import app.nodeloc.data.model.CurrentSessionDto
 import app.nodeloc.data.model.CurrentUserDto
 import app.nodeloc.data.model.BadgeStyleDto
+import app.nodeloc.data.model.BookmarkCreatedDto
 import app.nodeloc.data.model.CreatedPostDto
 import app.nodeloc.data.model.GifSearchDto
 import app.nodeloc.data.model.LatestDto
@@ -160,6 +161,9 @@ object DiscourseApi {
     private suspend fun putForm(path: String, form: FormBody = FormBody.Builder().build()): Pair<Int, String?> =
         writeRequest(path) { put(form) }
 
+    private suspend fun deleteRequest(path: String): Pair<Int, String?> =
+        writeRequest(path) { delete() }
+
     /**
      * 密码登录。成功返回当前用户;账号开启 2FA 时抛 [SecondFactorRequiredException]
      * (携带二次提交所需的 second_factor_token);凭据错误抛 [ApiException](服务端文案)。
@@ -296,6 +300,49 @@ object DiscourseApi {
         val (code, body) = putForm("/posts/$postId", form)
         if (code !in 200..299 || body == null) throw httpError(code, body)
         return json.decodeFromString<PostEditResponseDto>(body).post
+    }
+
+    /** 删除楼层(软删除,管理员/版主删除他人帖子也走这个接口)。 */
+    suspend fun deletePost(postId: Long) {
+        val (code, body) = deleteRequest("/posts/$postId")
+        if (code !in 200..299) throw httpError(code, body)
+    }
+
+    /** 恢复已删除的楼层。 */
+    suspend fun recoverPost(postId: Long) {
+        val (code, body) = putForm("/posts/$postId/recover")
+        if (code !in 200..299) throw httpError(code, body)
+    }
+
+    /** 收藏楼层,返回书签 id(取消收藏需要用它调 [deleteBookmark])。 */
+    suspend fun bookmarkPost(postId: Long): Long {
+        val form = FormBody.Builder()
+            .add("bookmarkable_id", postId.toString())
+            .add("bookmarkable_type", "Post")
+            .add("auto_delete_preference", "3")
+            .build()
+        val (code, body) = postForm("/bookmarks.json", form)
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        return json.decodeFromString<BookmarkCreatedDto>(body).id
+    }
+
+    suspend fun deleteBookmark(bookmarkId: Long) {
+        val (code, body) = deleteRequest("/bookmarks/$bookmarkId.json")
+        if (code !in 200..299) throw httpError(code, body)
+    }
+
+    /**
+     * 举报楼层。[postActionTypeId] 取自 /site.json 的 post_action_types
+     * (如 3=偏离话题、4=不当言论、8=垃圾信息、10=非法);[message] 用于"其他内容"等需要补充说明的类型。
+     */
+    suspend fun flagPost(postId: Long, postActionTypeId: Int, message: String? = null) {
+        val form = FormBody.Builder()
+            .add("id", postId.toString())
+            .add("post_action_type_id", postActionTypeId.toString())
+            .apply { message?.takeIf { it.isNotBlank() }?.let { add("message", it) } }
+            .build()
+        val (code, body) = postForm("/post_actions", form)
+        if (code !in 200..299) throw httpError(code, body)
     }
 
     /**

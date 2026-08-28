@@ -33,11 +33,18 @@ import kotlinx.coroutines.launch
 /** 官网 discourse-reactions 的 7 种可选表情,顺序与站点长按菜单一致;默认赞对应 heart。 */
 val AvailableReactions = listOf("heart", "+1", "laughing", "open_mouth", "clap", "confetti_ball", "hugs")
 
+/** /site.json 的 post_action_types 里,"赞"这个操作类型的 id,服务端固定为 2 */
+private const val LikeActionTypeId = 2
+
 private fun emojiUrl(name: String) = DiscourseApi.BASE + "/images/emoji/unicode/$name.png?v=15"
 
 /**
  * 帖子操作栏的反应按钮:单击切换默认反应(heart),长按弹出 7 种表情选单单选。
  * [post] 是最新楼层状态,反应结果由 [onUpdated] 回传新的 PostDto 供调用方替换本地列表项。
+ *
+ * 是否真的可交互由服务端逐楼层下发的 [PostDto.actionsSummary] 决定(id=2 是"赞"这个操作
+ * 类型),而不是简单靠"是否登录"判断——比如本人帖子上服务端不会给 can_act,因为不能给
+ * 自己点赞;已经点过反应后 can_act 也会消失,改成靠 currentUserReaction 的 canUndo 撤销。
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -46,9 +53,11 @@ fun ReactionButton(post: PostDto, canReact: Boolean, onUpdated: (PostDto) -> Uni
     val scope = rememberCoroutineScope()
     var menuOpen by remember(post.id) { mutableStateOf(false) }
     var busy by remember(post.id) { mutableStateOf(false) }
+    val likeAction = post.actionsSummary.firstOrNull { it.id == LikeActionTypeId }
+    val canToggle = canReact && (likeAction?.canAct == true || post.currentUserReaction?.canUndo == true)
 
     fun toggle(reaction: String) {
-        if (busy || !canReact) return
+        if (busy || !canToggle) return
         busy = true
         scope.launch {
             runCatching { DiscourseApi.toggleReaction(post.id, reaction) }
@@ -63,9 +72,9 @@ fun ReactionButton(post: PostDto, canReact: Boolean, onUpdated: (PostDto) -> Uni
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                enabled = canReact && !busy,
+                enabled = canToggle && !busy,
                 onClick = { toggle(current ?: "heart") },
-                onLongClick = { if (canReact) menuOpen = true },
+                onLongClick = { if (canToggle) menuOpen = true },
             )
             .padding(horizontal = 2.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,

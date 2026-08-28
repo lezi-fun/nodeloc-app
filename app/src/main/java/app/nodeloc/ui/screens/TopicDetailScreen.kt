@@ -48,6 +48,13 @@ import app.nodeloc.ui.components.RewardDialog
 import app.nodeloc.ui.components.TagChip
 import app.nodeloc.ui.theme.LocalNodelocColors
 import app.nodeloc.util.hexColor
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.nodeloc.data.TopicScreenTracker
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.min
@@ -276,6 +283,46 @@ fun TopicDetailScreen(
             if (index >= displayPosts.size - 4) {
                 if ((state as? DetailState.Ready)?.nested == true) loadMoreRoots() else loadMoreClassic()
             }
+        }
+    }
+
+    // 阅读进度上报(screen-track):按 post_id 前缀从可见 LazyColumn item key 里解析出楼层号,
+    // 每秒累加,满足条件时上报 POST /topics/timings。仅登录用户需要,官网匿名用户走本地缓存不上报。
+    val postNumberById = remember(displayPosts) { displayPosts.associate { it.post.id to it.post.postNumber } }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(args.id, loggedIn) {
+        if (!loggedIn) return@DisposableEffect onDispose {}
+        val tracker = TopicScreenTracker(args.id)
+        var tickJob: Job? = null
+
+        fun visiblePostNumbers(): Set<Int> =
+            listState.layoutInfo.visibleItemsInfo.mapNotNullTo(mutableSetOf()) { info ->
+                val key = info.key as? String
+                val postId = key?.removePrefix("post-")?.toLongOrNull()
+                postId?.let { postNumberById[it] }
+            }
+
+        suspend fun flushNow() {
+            val pending = tracker.drainPending() ?: return
+            runCatching { DiscourseApi.postTopicTimings(args.id, pending.timingsMs, pending.topicTimeMs) }
+                .onFailure { tracker.restore(pending) }
+        }
+
+        tickJob = scope.launch {
+            while (true) {
+                delay(1000)
+                if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                    tracker.tick(1000, visiblePostNumbers())
+                    if (tracker.shouldFlush()) flushNow()
+                }
+            }
+        }
+        onDispose {
+            tickJob?.cancel()
+            // 离开详情页前做最后一次上报:Composable 已在销毁过程中,scope 即将被取消,
+            // 这里特意脱离它的生命周期,确保这次收尾请求不会被半路打断。
+            @OptIn(DelicateCoroutinesApi::class)
+            GlobalScope.launch { flushNow() }
         }
     }
 

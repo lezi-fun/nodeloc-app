@@ -298,6 +298,24 @@ object DiscourseApi {
         return json.decodeFromString<PostEditResponseDto>(body).post
     }
 
+    /**
+     * 阅读进度上报,对应官网 screen-track 服务的 POST /topics/timings。
+     * [timings] 是本次要上报的楼层号→本次新增停留毫秒数增量(不是累计值);
+     * [topicTimeMs] 是整个话题自打开以来的累计停留毫秒数。
+     * 用官网同款的静默/后台请求头,避免这类高频后台请求触发登录跳转或弹错误提示。
+     */
+    suspend fun postTopicTimings(topicId: Long, timings: Map<Int, Long>, topicTimeMs: Long) {
+        val form = FormBody.Builder().apply {
+            timings.forEach { (postNumber, ms) -> add("timings[$postNumber]", ms.toString()) }
+            add("topic_time", topicTimeMs.toString())
+            add("topic_id", topicId.toString())
+        }.build()
+        val (code, _) = writeRequest("/topics/timings") {
+            header("X-Silence-Logger", "true").header("Discourse-Background", "true").post(form)
+        }
+        if (code !in 200..299) throw httpError(code, null)
+    }
+
     suspend fun userProfile(username: String): UserProfileDto = get<UserProfileResponseDto>("/u/$username.json").user
 
     suspend fun userSummary(username: String): UserSummaryDto =

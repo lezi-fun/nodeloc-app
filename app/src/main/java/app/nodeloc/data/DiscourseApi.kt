@@ -6,6 +6,7 @@ import app.nodeloc.data.model.CurrentUserDto
 import app.nodeloc.data.model.BadgeStyleDto
 import app.nodeloc.data.model.BookmarkCreatedDto
 import app.nodeloc.data.model.CreatedPostDto
+import app.nodeloc.data.model.PermanentlyDeleteCheckDto
 import app.nodeloc.data.model.GifSearchDto
 import app.nodeloc.data.model.LatestDto
 import app.nodeloc.data.model.LotteryActionResultDto
@@ -302,15 +303,56 @@ object DiscourseApi {
         return json.decodeFromString<PostEditResponseDto>(body).post
     }
 
-    /** 删除楼层(软删除,管理员/版主删除他人帖子也走这个接口)。 */
-    suspend fun deletePost(postId: Long) {
-        val (code, body) = deleteRequest("/posts/$postId")
+    /** 删除楼层(软删除,管理员/版主删除他人帖子也走这个接口)。[forceDestroy] 为真时是永久删除。 */
+    suspend fun deletePost(postId: Long, forceDestroy: Boolean = false) {
+        val path = if (forceDestroy) "/posts/$postId?force_destroy=true" else "/posts/$postId"
+        val (code, body) = deleteRequest(path)
         if (code !in 200..299) throw httpError(code, body)
     }
 
     /** 恢复已删除的楼层。 */
     suspend fun recoverPost(postId: Long) {
         val (code, body) = putForm("/posts/$postId/recover")
+        if (code !in 200..299) throw httpError(code, body)
+    }
+
+    /** 永久删除前的服务端确认:返回是否真的可以永久删除,不可以时带原因文案。 */
+    suspend fun permanentlyDeleteCheck(postId: Long): PermanentlyDeleteCheckDto =
+        get("/posts/$postId/permanently_delete_check.json")
+
+    /**
+     * 楼层级布尔字段的通用更新入口,官网锁定编辑(locked)/Wiki化(wiki)都走这个模式:
+     * PUT /posts/{id}/{field} { field: value }。仅管理员/版主可调,楼层字段名与请求体键名一致。
+     */
+    private suspend fun updatePostField(postId: Long, field: String, value: Boolean) {
+        val form = FormBody.Builder().add(field, value.toString()).build()
+        val (code, body) = putForm("/posts/$postId/$field", form)
+        if (code !in 200..299) throw httpError(code, body)
+    }
+
+    suspend fun setPostLocked(postId: Long, locked: Boolean) = updatePostField(postId, "locked", locked)
+
+    suspend fun setPostWiki(postId: Long, wiki: Boolean) = updatePostField(postId, "wiki", wiki)
+
+    /** 重新用最新 Markdown 规则渲染楼层 HTML(修 bug 或升级插件后用来批量刷正文渲染结果)。 */
+    suspend fun rebakePost(postId: Long) {
+        val (code, body) = putForm("/posts/$postId/rebake")
+        if (code !in 200..299) throw httpError(code, body)
+    }
+
+    /** 取消隐藏(该楼层因被举报等原因被系统自动隐藏后,管理员/版主人工恢复展示)。 */
+    suspend fun unhidePost(postId: Long) {
+        val (code, body) = putForm("/posts/$postId/unhide")
+        if (code !in 200..299) throw httpError(code, body)
+    }
+
+    /** 变更楼层所有者(把帖子过户给另一个用户,常用于处理违规注册的马甲号)。 */
+    suspend fun changePostOwner(topicId: Long, postIds: List<Long>, newUsername: String) {
+        val form = FormBody.Builder().apply {
+            postIds.forEach { add("post_ids[]", it.toString()) }
+            add("username", newUsername)
+        }.build()
+        val (code, body) = postForm("/t/$topicId/change-owner", form)
         if (code !in 200..299) throw httpError(code, body)
     }
 

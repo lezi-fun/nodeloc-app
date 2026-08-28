@@ -77,7 +77,22 @@ data class CurrentUserDto(
     @SerialName("sidebar_tags") val sidebarTags: List<String> = emptyList(),
     /** 侧栏"小程序"区块:最近使用过的小程序话题 */
     @SerialName("recent_apps") val recentApps: List<RecentAppDto> = emptyList(),
-)
+    /**
+     * 是否有权变更帖子所有者,服务端已经算好直接下发(仅 admin,或站点开关允许时的版主/
+     * 特定用户组成员才会带这个字段,值恒为 true,字段不存在即代表没有权限)。
+     */
+    @SerialName("can_change_post_owner") val canChangePostOwner: Boolean = false,
+) {
+    /** 是否是站务人员(管理员或版主),对应官网 guardian 的 is_staff? */
+    val isStaff: Boolean get() = admin || moderator
+
+    /**
+     * 与官网 currentUser.canManageTopic 一致:管理员/版主,或信任等级4的领袖用户。
+     * 注意不是所有"管理操作"都用这个粒度——锁定编辑/取消隐藏/变更所有者的后端 guardian
+     * 只认 is_staff?,不含 tl4;只有"重新渲染"用的是这个更宽的判断,调用处按需选用 [isStaff] 或本属性。
+     */
+    val canManageTopic: Boolean get() = isStaff || trustLevel == 4
+}
 
 /** 侧栏"小程序"条目,对应 discourse_apps 插件的最近使用记录 */
 @Serializable
@@ -355,6 +370,13 @@ data class CreatedPostDto(
 @Serializable
 data class BookmarkCreatedDto(val id: Long = 0)
 
+/** GET /posts/{id}/permanently_delete_check.json 响应:永久删除前的服务端权限确认 */
+@Serializable
+data class PermanentlyDeleteCheckDto(
+    @SerialName("can_permanently_delete") val canPermanentlyDelete: Boolean = false,
+    val reason: String? = null,
+)
+
 @Serializable
 data class ReplyToUserDto(
     val id: Int = 0,
@@ -410,6 +432,22 @@ data class PostDto(
     val bookmarked: Boolean = false,
     /** 书签记录 id,取消书签(DELETE /bookmarks/{id}.json)时需要 */
     @SerialName("bookmark_id") val bookmarkId: Long? = null,
+    /** 是否已被锁定编辑(仅管理员/版主可锁定/解锁,锁定后作者本人也不能再编辑) */
+    val locked: Boolean = false,
+    /** 是否已被设为 wiki 帖(任何受信任用户都能编辑正文) */
+    val wiki: Boolean = false,
+    /** 当前用户是否有权将此楼层设为/取消 wiki(本人楼主或管理员/版主) */
+    @SerialName("can_wiki") val canWiki: Boolean = false,
+    /** 帖子是否因被举报等原因被隐藏 */
+    val hidden: Boolean = false,
+    /** 非空表示楼层已被(软)删除 */
+    @SerialName("deleted_at") val deletedAt: String? = null,
+    /**
+     * 仅当"已删除 + 当前用户是管理员 + 站点开启 can_permanently_delete 设置"三者都满足时,
+     * 服务端才会下发这个字段(值恒为 true,不存在即代表不能永久删)。真正执行前仍需再调
+     * permanently_delete_check 接口二次确认,这里只用来控制按钮是否展示。
+     */
+    @SerialName("can_permanently_delete") val canPermanentlyDelete: Boolean = false,
 ) {
     /** 徽章文案:管理员 → ADMIN,版主 → MOD,其余职员 → STAFF,普通用户无。 */
     val staffBadge: String?

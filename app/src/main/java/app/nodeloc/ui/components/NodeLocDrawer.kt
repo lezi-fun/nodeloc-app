@@ -69,6 +69,7 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopic
     // svg 解码由全局 ImageLoader(NodelocApp)提供
     var nodes by remember { mutableStateOf<List<CategoryDto>>(emptyList()) }
     var tags by remember { mutableStateOf<List<TagDto>>(emptyList()) }
+    var apps by remember { mutableStateOf<List<RecentAppDto>>(emptyList()) }
     val me by SessionRepo.currentUser.collectAsState()
     var showLogout by remember { mutableStateOf(false) }
     var showAllApps by remember { mutableStateOf(false) }
@@ -88,6 +89,7 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopic
         } else {
             runCatching { SiteRepo.topTags() }.getOrDefault(emptyList()).take(5)
         }
+        apps = if (me?.recentApps.orEmpty().isNotEmpty()) me?.recentApps.orEmpty() else runCatching { SiteRepo.popularApps() }.getOrDefault(emptyList())
     }
 
     fun openApp(app: RecentAppDto) {
@@ -174,9 +176,8 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopic
             DrawerEntry("常见问题", Icons.Filled.Info, onClose)
             DrawerEntry("开放登录", Icons.Filled.Info, onClose)
 
-            if (me?.recentApps?.isNotEmpty() == true) {
+            if (apps.isNotEmpty()) {
                 DrawerSectionTitle("小程序")
-                val apps = me?.recentApps.orEmpty()
                 apps.take(if (showAllApps) apps.size else 5).forEach { app ->
                     CategoryEntry(
                         text = app.name,

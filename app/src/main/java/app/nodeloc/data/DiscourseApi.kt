@@ -1,6 +1,7 @@
 package app.nodeloc.data
 
 import app.nodeloc.data.model.CheckinResponseDto
+import app.nodeloc.data.model.CustomEmojiDto
 import app.nodeloc.data.model.CsrfDto
 import app.nodeloc.data.model.CurrentSessionDto
 import app.nodeloc.data.model.CurrentUserDto
@@ -37,6 +38,8 @@ import app.nodeloc.data.model.TopicDetailDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.FormBody
@@ -105,6 +108,15 @@ object DiscourseApi {
             }
         }
 
+    suspend fun customEmojis(): List<CustomEmojiDto> {
+        val element = get<kotlinx.serialization.json.JsonElement>("/emojis.json")
+        val array = runCatching { element.jsonArray }.getOrNull()
+            ?: element.jsonObject["emoji"]?.jsonArray
+            ?: element.jsonObject["emojis"]?.jsonArray
+            ?: return emptyList()
+        return array.mapNotNull { runCatching { json.decodeFromJsonElement(CustomEmojiDto.serializer(), it) }.getOrNull() }
+            .filter { it.name.isNotBlank() && it.url.isNotBlank() }
+    }
     suspend fun latest(page: Int = 0): LatestDto =
         get("/latest.json?no_definitions=true&page=" + page)
 

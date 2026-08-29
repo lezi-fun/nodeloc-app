@@ -98,7 +98,7 @@ object MarkdownEditingActions {
     }
 
     fun insertAttachment(value: TextFieldValue, url: String): TextFieldValue {
-        val markdown = "\n[$url]($url)\n"
+        val markdown = "\n![]($url)\n"
         val cursor = value.selection.max
         val text = value.text
         val result = text.substring(0, cursor) + markdown + text.substring(cursor)

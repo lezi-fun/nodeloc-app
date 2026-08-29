@@ -112,6 +112,11 @@ class MarkdownEditingTest {
     }
 
     @Test
+    fun `attachment inserts an image without visible filename`() {
+        val result = MarkdownEditingActions.insertAttachment(field("", 0), "https://www.nodeloc.com/uploads/example.png")
+        assertEquals("\n![](https://www.nodeloc.com/uploads/example.png)\n", result.text)
+    }
+    @Test
     fun `link with no selection inserts placeholder label`() {
         val result = MarkdownEditing.applyLink(field("", 0), "https://example.com", "文本")
         assertEquals("[文本](https://example.com)", result.text)

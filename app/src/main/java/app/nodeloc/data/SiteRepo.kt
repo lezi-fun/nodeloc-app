@@ -12,6 +12,7 @@ object SiteRepo {
     @Volatile private var categories: Map<Int, CategoryDto>? = null
     @Volatile private var topTags: List<TagDto>? = null
     @Volatile private var postActionTypes: List<PostActionTypeDto>? = null
+    @Volatile private var popularApps: List<app.nodeloc.data.model.RecentAppDto>? = null
 
     private suspend fun loadSite() {
         if (categories != null && topTags != null && postActionTypes != null) return
@@ -19,6 +20,7 @@ object SiteRepo {
         categories = site.categories.associateBy { it.id }
         topTags = site.topTags
         postActionTypes = site.postActionTypes
+        popularApps = site.popularApps
     }
 
     suspend fun categories(): Map<Int, CategoryDto> {
@@ -34,7 +36,11 @@ object SiteRepo {
         return topTags ?: emptyList()
     }
 
-    /** 举报菜单文案/是否需要补充说明的定义来源,与楼层的 actionsSummary 联合驱动"能做什么" */
+    suspend fun popularApps(): List<app.nodeloc.data.model.RecentAppDto> {
+        loadSite()
+        return popularApps ?: emptyList()
+    }
+
     suspend fun postActionTypes(): List<PostActionTypeDto> {
         loadSite()
         return postActionTypes ?: emptyList()

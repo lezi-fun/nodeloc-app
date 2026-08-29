@@ -506,6 +506,8 @@ data class SiteDto(
     @SerialName("top_tags") val topTags: List<TagDto> = emptyList(),
     /** 全站可用的举报/操作类型定义,举报菜单的文案和"是否需要补充说明"都从这里取,不写死 */
     @SerialName("post_action_types") val postActionTypes: List<PostActionTypeDto> = emptyList(),
+    @SerialName("popular_apps") val popularApps: List<RecentAppDto> = emptyList(),
+    @SerialName("apps_browse_url") val appsBrowseUrl: String? = null,
 )
 
 /** /site.json 的 post_action_types 一条:定义一种可对楼层执行的操作(赞/举报的各细分原因) */

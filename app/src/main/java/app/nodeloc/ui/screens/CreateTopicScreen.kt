@@ -1,5 +1,7 @@
 package app.nodeloc.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import app.nodeloc.data.DiscourseApi
@@ -44,6 +47,8 @@ import app.nodeloc.data.SiteRepo
 import app.nodeloc.data.model.CategoryDto
 import app.nodeloc.ui.components.CategoryDot
 import app.nodeloc.ui.components.CategoryPickerSheet
+import app.nodeloc.ui.components.CookedText
+import app.nodeloc.ui.components.EmojiPickerSheet
 import app.nodeloc.ui.components.GifSearchSheet
 import app.nodeloc.ui.components.MarkdownAction
 import app.nodeloc.ui.components.MarkdownEditingActions
@@ -60,6 +65,7 @@ import kotlinx.coroutines.launch
 fun CreateTopicScreen(onBack: () -> Unit, onCreated: (Long) -> Unit) {
     val nc = LocalNodelocColors.current
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var categories by remember { mutableStateOf<List<CategoryDto>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf<CategoryDto?>(null) }
@@ -69,6 +75,22 @@ fun CreateTopicScreen(onBack: () -> Unit, onCreated: (Long) -> Unit) {
     var submitting by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var gifSheetOpen by remember { mutableStateOf(false) }
+    var emojiSheetOpen by remember { mutableStateOf(false) }
+    var previewMode by remember { mutableStateOf(false) }
+    var previewHtml by remember { mutableStateOf("") }
+    var uploading by remember { mutableStateOf(false) }
+
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            uploading = true
+            errorMsg = null
+            runCatching { app.nodeloc.ui.components.uploadEditorFile(context, uri) }
+                .onSuccess { url -> body = MarkdownEditingActions.insertAttachment(body, url) }
+                .onFailure { errorMsg = it.message ?: "上传失败，请稍后再试" }
+            uploading = false
+        }
+    }
 
     LaunchedEffect(Unit) {
         categories = SiteRepo.categories().values.sortedBy { it.position }
@@ -162,9 +184,28 @@ fun CreateTopicScreen(onBack: () -> Unit, onCreated: (Long) -> Unit) {
 
         MarkdownToolbar(
             onAction = { action ->
-                if (action == MarkdownAction.Gif) gifSheetOpen = true
-                else body = MarkdownEditingActions.apply(action, body)
+                when (action) {
+                    MarkdownAction.Gif -> gifSheetOpen = true
+                    MarkdownAction.Emoji -> emojiSheetOpen = true
+                    MarkdownAction.Attachment -> filePicker.launch("*/*")
+                    MarkdownAction.TogglePreview -> {
+                        if (!previewMode) {
+                            scope.launch {
+                                runCatching { DiscourseApi.previewPost(body.text) }
+                                    .onSuccess { previewHtml = it.cooked; previewMode = true }
+                                    .onFailure { errorMsg = it.message ?: "预览失败，请稍后再试" }
+                            }
+                        } else previewMode = false
+                    }
+                    else -> body = MarkdownEditingActions.apply(action, body)
+                }
             },
+        )
+        Text(
+            if (previewMode) "A · 渲染预览" else "M · Markdown",
+            style = MaterialTheme.typography.labelSmall,
+            color = nc.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
         )
 
         errorMsg?.let { msg ->
@@ -176,7 +217,9 @@ fun CreateTopicScreen(onBack: () -> Unit, onCreated: (Long) -> Unit) {
             )
         }
 
-        OutlinedTextField(
+        if (previewMode) {
+            CookedText(previewHtml, Modifier.fillMaxSize().padding(16.dp))
+        } else OutlinedTextField(
             value = body,
             onValueChange = { body = it },
             placeholder = {
@@ -201,6 +244,15 @@ fun CreateTopicScreen(onBack: () -> Unit, onCreated: (Long) -> Unit) {
             onPick = { gif ->
                 body = MarkdownEditingActions.insertGif(body, gif)
                 gifSheetOpen = false
+            },
+        )
+    }
+    if (emojiSheetOpen) {
+        EmojiPickerSheet(
+            onDismiss = { emojiSheetOpen = false },
+            onPick = { emoji ->
+                body = MarkdownEditingActions.insertEmoji(body, emoji)
+                emojiSheetOpen = false
             },
         )
     }

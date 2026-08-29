@@ -21,6 +21,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -79,16 +82,29 @@ fun CookedText(
     modifier: Modifier = Modifier,
     topicReferer: String? = null,
 ) {
+    val context = LocalContext.current
     val body = remember(html) { Jsoup.parseBodyFragment(html, DiscourseApi.BASE).body() }
     var previewUrl by remember { mutableStateOf<String?>(null) }
+    fun openUrl(url: String) {
+        runCatching {
+            context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        }
+    }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        body.childNodes().forEach { RenderBlock(it, topicReferer, onPreview = { previewUrl = it }) }
+        body.childNodes().forEach {
+            RenderBlock(it, topicReferer, onPreview = { previewUrl = it }, onOpenUrl = ::openUrl)
+        }
     }
     previewUrl?.let { url -> ImagePreviewDialog(url, onDismiss = { previewUrl = null }) }
 }
 
 @Composable
-private fun RenderBlock(node: Node, topicReferer: String?, onPreview: (String) -> Unit) {
+private fun RenderBlock(
+    node: Node,
+    topicReferer: String?,
+    onPreview: (String) -> Unit,
+    onOpenUrl: (String) -> Unit,
+) {
     val nc = MaterialTheme.colorScheme
     when (node) {
         is TextNode -> if (node.text().isNotBlank()) {
@@ -100,12 +116,13 @@ private fun RenderBlock(node: Node, topicReferer: String?, onPreview: (String) -
             // discourse-apps 插件的小程序/小游戏嵌入点:cooked 里只有一个空占位 div,
             // 真实界面由 /apps/installs/{id}/webview 这个自包含页面提供
             node.hasClass("discourse-app-embed") -> AppEmbedBlock(node, topicReferer)
+            node.hasClass("onebox") || node.hasClass("onebox-body") -> OneboxBlock(node, onOpenUrl)
             else -> when (node.tagName().lowercase()) {
-                "p" -> Paragraph(node, topicReferer, onPreview)
-                "img" -> if (node.isEmoji()) InlineFlow(Element("span").appendChild(node.clone())) else ContentImage(node, onPreview)
-                "a" -> node.nonEmojiImage()?.let { ContentImage(it, onPreview) } ?: LinkBlock(node)
-                "blockquote", "aside" -> QuoteBlock(node, topicReferer, onPreview)
-                "details" -> DetailsBlock(node, topicReferer, onPreview)
+                "p" -> Paragraph(node, topicReferer, onPreview, onOpenUrl)
+                "img" -> if (node.isEmoji()) InlineFlow(Element("span").appendChild(node.clone()), onOpenUrl) else ContentImage(node, onPreview)
+                "a" -> node.nonEmojiImage()?.let { ContentImage(it, onPreview) } ?: LinkBlock(node, onOpenUrl)
+                "blockquote", "aside" -> QuoteBlock(node, topicReferer, onPreview, onOpenUrl)
+                "details" -> DetailsBlock(node, topicReferer, onPreview, onOpenUrl)
                 "pre" -> CodeBlock(node)
                 "ul", "ol" -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     node.children().forEachIndexed { i, li ->
@@ -115,7 +132,7 @@ private fun RenderBlock(node: Node, topicReferer: String?, onPreview: (String) -
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = nc.onSurfaceVariant,
                             )
-                            Column { li.childNodes().forEach { RenderBlock(it, topicReferer, onPreview) } }
+                            Column { li.childNodes().forEach { RenderBlock(it, topicReferer, onPreview, onOpenUrl) } }
                         }
                     }
                 }
@@ -127,7 +144,7 @@ private fun RenderBlock(node: Node, topicReferer: String?, onPreview: (String) -
                     color = nc.onBackground,
                 )
                 "br" -> Unit
-                else -> if (node.childNodeSize() > 0 || node.text().isNotBlank()) InlineFlow(node)
+                else -> if (node.childNodeSize() > 0 || node.text().isNotBlank()) InlineFlow(node, onOpenUrl)
             }
         }
         else -> Unit
@@ -135,7 +152,12 @@ private fun RenderBlock(node: Node, topicReferer: String?, onPreview: (String) -
 }
 
 @Composable
-private fun Paragraph(element: Element, topicReferer: String?, onPreview: (String) -> Unit) {
+private fun Paragraph(
+    element: Element,
+    topicReferer: String?,
+    onPreview: (String) -> Unit,
+    onOpenUrl: (String) -> Unit,
+) {
     val parts = remember(element) {
         buildList {
             var inline = Element("span")
@@ -165,7 +187,7 @@ private fun Paragraph(element: Element, topicReferer: String?, onPreview: (Strin
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         parts.forEach { part ->
             when (part) {
-                is ParagraphPart.Inline -> InlineFlow(part.element)
+                is ParagraphPart.Inline -> InlineFlow(part.element, onOpenUrl)
                 is ParagraphPart.Image -> ContentImage(part.element, onPreview)
             }
         }
@@ -173,7 +195,7 @@ private fun Paragraph(element: Element, topicReferer: String?, onPreview: (Strin
 }
 
 @Composable
-private fun InlineFlow(element: Element) {
+private fun InlineFlow(element: Element, onOpenUrl: (String) -> Unit) {
     val nc = MaterialTheme.colorScheme
     val inline = remember(element) { mutableMapOf<String, InlineTextContent>() }
     val annotated = remember(element) {
@@ -190,7 +212,15 @@ private fun InlineFlow(element: Element) {
                                 color = if (link != null) Color(0xFF009966) else Color.Unspecified,
                                 textDecoration = link?.let { TextDecoration.Underline },
                             ),
-                        ) { append(n.text()) }
+                        ) {
+                            if (link != null) {
+                                pushStringAnnotation("URL", resolveUrl(link) ?: link)
+                                append(n.text())
+                                pop()
+                            } else {
+                                append(n.text())
+                            }
+                        }
                     }
                     is Element -> when (n.tagName().lowercase()) {
                         "img" -> n.attr("src").takeIf { it.isNotBlank() }?.let { src ->
@@ -223,10 +253,20 @@ private fun InlineFlow(element: Element) {
         }
     }
 
+    var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         text = annotated,
         style = MaterialTheme.typography.bodyMedium.copy(color = nc.onSurface),
         inlineContent = inline,
+        onTextLayout = { textLayout = it },
+        modifier = Modifier.pointerInput(annotated) {
+            detectTapGestures { position ->
+                val offset = textLayout?.getOffsetForPosition(position) ?: return@detectTapGestures
+                annotated.getStringAnnotations("URL", offset, offset).firstOrNull()?.let { annotation ->
+                    onOpenUrl(annotation.item)
+                }
+            }
+        },
     )
 }
 
@@ -238,12 +278,11 @@ private fun ContentImage(node: Element, onPreview: (String) -> Unit) {
     val ratio = if (declaredWidth != null && declaredHeight != null) declaredWidth / declaredHeight else null
 
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val imageWidth = declaredWidth?.dp?.coerceAtMost(maxWidth) ?: maxWidth
         AsyncImage(
             model = url,
-            contentDescription = node.attr("alt").ifBlank { null },
+            contentDescription = null,
             modifier = Modifier
-                .width(imageWidth)
+                .fillMaxWidth()
                 .then(if (ratio != null) Modifier.aspectRatio(ratio) else Modifier.wrapContentHeight())
                 .clip(RoundedCornerShape(8.dp))
                 // 与官网 lightbox 一致:点击在应用内放大查看,而非打开外部浏览器
@@ -330,7 +369,12 @@ private fun PermissionNotice(node: Element) {
 }
 
 @Composable
-private fun DetailsBlock(node: Element, topicReferer: String?, onPreview: (String) -> Unit) {
+private fun DetailsBlock(
+    node: Element,
+    topicReferer: String?,
+    onPreview: (String) -> Unit,
+    onOpenUrl: (String) -> Unit,
+) {
     val nc = MaterialTheme.colorScheme
     var expanded by remember(node) { mutableStateOf(node.hasAttr("open")) }
     val summary = remember(node) {
@@ -365,7 +409,7 @@ private fun DetailsBlock(node: Element, topicReferer: String?, onPreview: (Strin
                 ) {
                     node.childNodes().forEach { child ->
                         if (child is Element && child.tagName().equals("summary", true)) return@forEach
-                        RenderBlock(child, topicReferer, onPreview)
+                        RenderBlock(child, topicReferer, onPreview, onOpenUrl)
                     }
                 }
             }
@@ -374,18 +418,50 @@ private fun DetailsBlock(node: Element, topicReferer: String?, onPreview: (Strin
 }
 
 @Composable
-private fun LinkBlock(node: Element) {
+private fun OneboxBlock(node: Element, onOpenUrl: (String) -> Unit) {
     val nc = MaterialTheme.colorScheme
-    val context = LocalContext.current
+    val link = node.selectFirst("a[href]") ?: node.closest("a[href]")
+    val href = link?.absUrl("href")?.takeIf { it.isNotBlank() }
+        ?: node.attr("data-onebox-src").takeIf { it.isNotBlank() }
+        ?: return
+    val title = node.selectFirst(".onebox-body h3, .onebox-body h4, h3, h4, .title")?.text()?.trim()
+        .takeUnless { it.isNullOrBlank() } ?: href.removePrefix("https://").removePrefix("http://")
+    val description = node.selectFirst(".description, .onebox-body p, .excerpt")?.text()?.trim()
+    val image = node.selectFirst("img[src]")?.let { resolveUrl(it.attr("src")) }
+    Surface(
+        onClick = { onOpenUrl(href) },
+        shape = RoundedCornerShape(12.dp),
+        color = nc.surfaceVariant.copy(alpha = 0.65f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (image != null) {
+                AsyncImage(
+                    model = image,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+                Spacer(Modifier.width(10.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = nc.onSurface, maxLines = 2)
+                Text(href.removePrefix("https://").removePrefix("http://"), style = MaterialTheme.typography.labelSmall, color = nc.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (!description.isNullOrBlank()) Text(description, style = MaterialTheme.typography.bodySmall, color = nc.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+@Composable
+private fun LinkBlock(node: Element, onOpenUrl: (String) -> Unit) {
+    val nc = MaterialTheme.colorScheme
     val href = node.absUrl("href").ifBlank { resolveUrl(node.attr("href")).orEmpty() }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(nc.secondaryContainer.copy(alpha = 0.55f))
-            .clickable(enabled = href.isNotBlank()) {
-                runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(href))) }
-            }
+            .clickable(enabled = href.isNotBlank()) { onOpenUrl(href) }
             .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
         Text(
@@ -400,7 +476,7 @@ private fun LinkBlock(node: Element) {
 }
 
 @Composable
-private fun QuoteBlock(node: Element, topicReferer: String?, onPreview: (String) -> Unit) {
+private fun QuoteBlock(node: Element, topicReferer: String?, onPreview: (String) -> Unit, onOpenUrl: (String) -> Unit) {
     val nc = MaterialTheme.colorScheme
     val title = node.selectFirst(".title")?.text()?.trim()
     Surface(shape = RoundedCornerShape(12.dp), color = nc.surfaceVariant) {
@@ -411,7 +487,7 @@ private fun QuoteBlock(node: Element, topicReferer: String?, onPreview: (String)
             Column(Modifier.padding(top = if (title.isNullOrBlank()) 0.dp else 4.dp)) {
                 node.childNodes().forEach { child ->
                     if (child is Element && child.className().contains("title")) return@forEach
-                    RenderBlock(child, topicReferer, onPreview)
+                    RenderBlock(child, topicReferer, onPreview, onOpenUrl)
                 }
             }
         }

@@ -866,7 +866,7 @@ private fun RewardBubbleRow(rewards: List<app.nodeloc.data.model.RewardDto>, mod
                     color = if (reward.isDeduct) MaterialTheme.colorScheme.error else nc.onSurfaceVariant,
                 )
                 Spacer(Modifier.width(2.dp))
-                Icon(Icons.Filled.Bolt, null, tint = Color(0xFFFFA000), modifier = Modifier.size(13.dp))
+                Icon(Icons.Filled.Bolt, null, tint = nc.onSurfaceVariant, modifier = Modifier.size(13.dp))
             }
         }
     }

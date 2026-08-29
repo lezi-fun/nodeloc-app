@@ -65,7 +65,7 @@ private val OnCardTextMuted = Color(0xFFBBAFDA)
 fun LotteryCard(lottery: LotteryDto, modifier: Modifier = Modifier) {
     var state by remember(lottery.id) { mutableStateOf(lottery) }
     var buyOpen by remember(lottery.id) { mutableStateOf(false) }
-    var quantity by remember(lottery.id) { mutableIntStateOf(state.minTicketsPerUser.coerceAtLeast(1)) }
+    var quantity by remember(lottery.id) { mutableIntStateOf(lotteryPurchaseLimits(lottery).min) }
     var busy by remember(lottery.id) { mutableStateOf(false) }
     var errorMsg by remember(lottery.id) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -171,15 +171,26 @@ fun LotteryCard(lottery: LotteryDto, modifier: Modifier = Modifier) {
             }
 
             if (state.isOpen) {
+                val limits = lotteryPurchaseLimits(state)
                 Spacer(Modifier.height(14.dp))
                 if (buyOpen) {
+                    if (!limits.canPurchase) {
+                        Text(
+                            "您已达到购票上限",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFFFD54F),
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
                     BuyPopover(
-                        quantity = quantity,
-                        min = state.minTicketsPerUser.coerceAtLeast(1),
-                        max = (state.maxTicketsPerUser - state.userTickets).coerceAtLeast(state.minTicketsPerUser.coerceAtLeast(1)),
+                        quantity = quantity.coerceIn(limits.min, limits.max.coerceAtLeast(limits.min)),
+                        min = limits.min,
+                        max = limits.max,
                         busy = busy,
-                        onQuantityChange = { quantity = it },
+                        canPurchase = limits.canPurchase,
+                        onQuantityChange = { quantity = it.coerceIn(limits.min, limits.max) },
                         onConfirm = {
+                            if (!limits.canPurchase) return@BuyPopover
                             busy = true; errorMsg = null
                             scope.launch {
                                 runCatching { DiscourseApi.lotteryParticipate(state.id, quantity, random = false) }
@@ -189,6 +200,7 @@ fun LotteryCard(lottery: LotteryDto, modifier: Modifier = Modifier) {
                             }
                         },
                         onRandom = {
+                            if (!limits.canPurchase) return@BuyPopover
                             busy = true; errorMsg = null
                             scope.launch {
                                 runCatching { DiscourseApi.lotteryParticipate(state.id, quantity, random = true) }
@@ -261,6 +273,7 @@ private fun BuyPopover(
     min: Int,
     max: Int,
     busy: Boolean,
+    canPurchase: Boolean,
     onQuantityChange: (Int) -> Unit,
     onConfirm: () -> Unit,
     onRandom: () -> Unit,
@@ -287,7 +300,7 @@ private fun BuyPopover(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Surface(
                     onClick = onConfirm,
-                    enabled = !busy,
+                    enabled = !busy && canPurchase,
                     shape = RoundedCornerShape(999.dp),
                     color = Color(0xFF00A86B),
                     modifier = Modifier.weight(1f),

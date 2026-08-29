@@ -1,6 +1,9 @@
 package app.nodeloc.data
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -18,6 +21,12 @@ class SecondFactorRequiredException(val secondFactorToken: String) :
 
 private val errorJson = Json { ignoreUnknownKeys = true }
 
+private fun errorElementMessage(element: JsonElement): String? = when (element) {
+    is JsonPrimitive -> element.contentOrNull
+    else -> element.jsonObject["message"]?.jsonPrimitive?.contentOrNull
+        ?: element.jsonObject["description"]?.jsonPrimitive?.contentOrNull
+}
+
 /** 由 HTTP 状态码与响应体构造语义化异常,body 形如 {"errors":[…],"error_type":"…"} */
 fun httpError(code: Int, body: String? = null): ApiException {
     var serverMessage: String? = null
@@ -25,8 +34,10 @@ fun httpError(code: Int, body: String? = null): ApiException {
     if (!body.isNullOrBlank()) {
         runCatching {
             val obj = errorJson.parseToJsonElement(body).jsonObject
-            errorType = obj["error_type"]?.jsonPrimitive?.content
-            serverMessage = obj["errors"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content
+            errorType = obj["error_type"]?.jsonPrimitive?.contentOrNull
+            serverMessage = obj["errors"]?.jsonArray?.firstOrNull()?.let { errorElementMessage(it) }
+                ?: obj["error"]?.jsonPrimitive?.contentOrNull
+                ?: obj["message"]?.jsonPrimitive?.contentOrNull
         }
     }
     return ApiException(

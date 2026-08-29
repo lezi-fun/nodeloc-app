@@ -60,6 +60,13 @@ data class UserDto(
 @Serializable
 data class UserSearchDto(val users: List<UserDto> = emptyList())
 
+@Serializable
+data class CustomEmojiDto(
+    val name: String = "",
+    val url: String = "",
+    val aliases: List<String> = emptyList(),
+)
+
 /** /session/current.json 与登录成功返回的当前用户 */
 @Serializable
 data class CurrentUserDto(

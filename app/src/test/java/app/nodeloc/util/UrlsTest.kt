@@ -1,7 +1,9 @@
 package app.nodeloc.util
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class UrlsTest {
@@ -54,5 +56,24 @@ class UrlsTest {
             "$base/user_avatar/www.nodeloc.com/tily/96/1_2.png",
             absoluteUrl("/user_avatar/www.nodeloc.com/tily/96/1_2.png", base),
         )
+    }
+
+    @Test
+    fun `external http and https urls require confirmation`() {
+        assertTrue(isExternalHttpUrl("https://example.com/page"))
+        assertTrue(isExternalHttpUrl("http://example.com/page"))
+    }
+
+    @Test
+    fun `nodeloc hosts are treated as internal`() {
+        assertFalse(isExternalHttpUrl("https://www.nodeloc.com/t/topic/1"))
+        assertFalse(isExternalHttpUrl("https://nodeloc.com/t/topic/1"))
+    }
+
+    @Test
+    fun `invalid and non http urls do not count as external web links`() {
+        assertFalse(isExternalHttpUrl("mailto:test@example.com"))
+        assertFalse(isExternalHttpUrl("not a url"))
+        assertFalse(isExternalHttpUrl(null))
     }
 }

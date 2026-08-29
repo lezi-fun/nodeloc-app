@@ -71,6 +71,8 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopic
     var tags by remember { mutableStateOf<List<TagDto>>(emptyList()) }
     val me by SessionRepo.currentUser.collectAsState()
     var showLogout by remember { mutableStateOf(false) }
+    var showAllApps by remember { mutableStateOf(false) }
+    var showAllNodes by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(me?.id) {
         val allCategories = runCatching { SiteRepo.categories().values.toList() }.getOrDefault(emptyList())
@@ -174,7 +176,8 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopic
 
             if (me?.recentApps?.isNotEmpty() == true) {
                 DrawerSectionTitle("小程序")
-                me?.recentApps.orEmpty().forEach { app ->
+                val apps = me?.recentApps.orEmpty()
+                apps.take(if (showAllApps) apps.size else 5).forEach { app ->
                     CategoryEntry(
                         text = app.name,
                         color = nc.primary,
@@ -182,16 +185,23 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopic
                         onClick = { openApp(app) },
                     )
                 }
+                if (apps.size > 5) {
+                    DrawerEntry(if (showAllApps) "收起" else "查看更多", Icons.Filled.MoreVert) { showAllApps = !showAllApps }
+                }
             }
 
             DrawerSectionTitle("节点")
-            nodes.forEach { cat ->
+            val visibleNodes = nodes.take(if (showAllNodes) nodes.size else 14)
+            visibleNodes.forEach { cat ->
                 CategoryEntry(
                     text = cat.name,
                     color = hexColor(cat.color),
                     logoUrl = cat.uploadedLogo?.url?.let { absoluteUrl(it, DiscourseApi.BASE) },
                     onClick = onClose,
                 )
+            }
+            if (nodes.size > 14) {
+                DrawerEntry(if (showAllNodes) "收起" else "查看更多", Icons.Filled.MoreVert) { showAllNodes = !showAllNodes }
             }
 
             if (tags.isNotEmpty()) {

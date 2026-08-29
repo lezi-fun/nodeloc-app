@@ -1,6 +1,8 @@
 package app.nodeloc.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,9 +16,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ConfirmationNumber
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +49,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.nodeloc.data.DiscourseApi
@@ -68,6 +84,7 @@ fun LotteryCard(lottery: LotteryDto, modifier: Modifier = Modifier) {
     var quantity by remember(lottery.id) { mutableIntStateOf(lotteryPurchaseLimits(lottery).min) }
     var busy by remember(lottery.id) { mutableStateOf(false) }
     var errorMsg by remember(lottery.id) { mutableStateOf<String?>(null) }
+    var randomHoldProgress by remember(lottery.id) { mutableFloatStateOf(0f) }
     val scope = rememberCoroutineScope()
 
     fun refresh() {
@@ -79,6 +96,8 @@ fun LotteryCard(lottery: LotteryDto, modifier: Modifier = Modifier) {
     Surface(shape = RoundedCornerShape(11.dp), color = Color(0xFF1C0A4A), modifier = modifier.fillMaxWidth()) {
         Column(Modifier.background(CardGradient).padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.CardGiftcard, contentDescription = null, tint = Color(0xFFC4A8FF), modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
                     state.title,
                     style = MaterialTheme.typography.titleSmall,
@@ -94,18 +113,19 @@ fun LotteryCard(lottery: LotteryDto, modifier: Modifier = Modifier) {
             if (state.isOpen) Countdown(state.drawAt)
 
             Spacer(Modifier.height(10.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                MetaLine("开奖时间：" + formatDateTime(state.drawAt))
-                MetaLine(state.participantsCount.toString() + " / " + state.maxParticipantsDisplay + " 参与者")
-                MetaLine("已售奖券：" + state.ticketsCount)
-                if (state.userTickets > 0) MetaLine("您的奖券：" + state.userTickets)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetaLine(Icons.Filled.CalendarMonth, "开奖时间：" + formatDateTime(state.drawAt))
+                MetaLine(Icons.Filled.Groups, state.participantsCount.toString() + " / " + state.maxParticipantsDisplay + " 参与者")
+                MetaLine(Icons.Filled.ConfirmationNumber, "已售奖券：" + state.ticketsCount)
+                if (state.userTickets > 0) MetaLine(Icons.Filled.CheckCircle, "您的奖券：" + state.userTickets)
             }
 
-            if (state.minParticipants > 0 || state.maxTicketsPerUser < 100_000) {
+            if (state.minParticipants > 0 || state.minTicketsPerUser > 1 || state.maxTicketsPerUser > 0) {
                 Spacer(Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (state.minParticipants > 0) ConditionChip("至少 " + state.minParticipants + " 人参与")
-                    ConditionChip("每人最多 " + state.maxTicketsPerUser + " 张券")
+                    if (state.minParticipants > 0) ConditionChip(Icons.Filled.Groups, "至少 " + state.minParticipants + " 人参与")
+                    if (state.minTicketsPerUser > 1) ConditionChip(Icons.Filled.ConfirmationNumber, "每人至少 " + state.minTicketsPerUser + " 张券")
+                    if (state.maxTicketsPerUser > 0) ConditionChip(Icons.Filled.ConfirmationNumber, "每人最多 " + state.maxTicketsPerUser + " 张券")
                 }
             }
 
@@ -152,6 +172,10 @@ fun LotteryCard(lottery: LotteryDto, modifier: Modifier = Modifier) {
                         ) {
                             Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Avatar(p.username, SiteRepo.avatarUrl(p.avatarTemplate, 48), 18.dp)
+                                if (p.isRandom) {
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(Icons.Filled.Shuffle, contentDescription = "随机购买", tint = Color(0xFFFFD166), modifier = Modifier.size(14.dp))
+                                }
                                 Spacer(Modifier.width(5.dp))
                                 Text(
                                     "+" + p.tickets,
@@ -188,6 +212,8 @@ fun LotteryCard(lottery: LotteryDto, modifier: Modifier = Modifier) {
                         max = limits.max,
                         busy = busy,
                         canPurchase = limits.canPurchase,
+                        holdProgress = randomHoldProgress,
+                        onHoldProgress = { randomHoldProgress = it },
                         onQuantityChange = { quantity = it.coerceIn(limits.min, limits.max) },
                         onConfirm = {
                             if (!limits.canPurchase) return@BuyPopover
@@ -274,6 +300,8 @@ private fun BuyPopover(
     max: Int,
     busy: Boolean,
     canPurchase: Boolean,
+    holdProgress: Float,
+    onHoldProgress: (Float) -> Unit,
     onQuantityChange: (Int) -> Unit,
     onConfirm: () -> Unit,
     onRandom: () -> Unit,
@@ -311,8 +339,77 @@ private fun BuyPopover(
                     }
                 }
                 OutlinedButton(onClick = onCancel, enabled = !busy) { Text("取消", color = OnCardText) }
-                OutlinedButton(onClick = onRandom, enabled = !busy) { Text("随缘", color = Color(0xFFFFD54F)) }
+                HoldToActivateButton(
+                    enabled = !busy && canPurchase,
+                    progress = holdProgress,
+                    onProgress = onHoldProgress,
+                    onActivate = onRandom,
+                    modifier = Modifier.weight(1f),
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun HoldToActivateButton(
+    enabled: Boolean,
+    progress: Float,
+    onProgress: (Float) -> Unit,
+    onActivate: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(999.dp)
+    var holding by remember { mutableStateOf(false) }
+    LaunchedEffect(holding, enabled) {
+        if (!holding || !enabled) {
+            onProgress(0f)
+            return@LaunchedEffect
+        }
+        val start = android.os.SystemClock.uptimeMillis()
+        var activated = false
+        while (holding && enabled) {
+            val progress = ((android.os.SystemClock.uptimeMillis() - start) / 3000f).coerceIn(0f, 1f)
+            onProgress(progress)
+            if (progress >= 1f && !activated) {
+                activated = true
+                onActivate()
+            }
+            delay(16)
+        }
+    }
+    Box(
+        modifier
+            .clip(shape)
+            .background(Color.Transparent)
+            .border(1.dp, Color(0x66FFD166), shape)
+            .pointerInput(enabled) {
+                detectTapGestures(
+                    onPress = {
+                        if (enabled) {
+                            holding = true
+                            tryAwaitRelease()
+                            holding = false
+                        }
+                    },
+                )
+            }
+            .then(if (enabled) Modifier else Modifier.background(Color.White.copy(alpha = 0.05f)))
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (progress > 0f) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .fillMaxWidth(progress.coerceIn(0f, 1f))
+                    .background(Color(0x47FFD166)),
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Shuffle, contentDescription = "长按随机购买", tint = Color(0xFFFFD166), modifier = Modifier.size(16.dp).then(if (holding) Modifier.graphicsLayer { rotationZ = progress * 360f } else Modifier))
+            Spacer(Modifier.width(5.dp))
+            Text("长按随缘", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color(0xFFFFD166))
         }
     }
 }
@@ -338,19 +435,22 @@ private fun StatusBadge(status: String) {
 }
 
 @Composable
-private fun MetaLine(text: String) {
-    Text(text, style = MaterialTheme.typography.labelSmall, color = OnCardTextMuted)
+private fun MetaLine(icon: ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = Color(0xFFC4A8FF), modifier = Modifier.size(15.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(text, style = MaterialTheme.typography.labelSmall, color = OnCardTextMuted)
+    }
 }
 
 @Composable
-private fun ConditionChip(text: String) {
+private fun ConditionChip(icon: ImageVector, text: String) {
     Surface(shape = RoundedCornerShape(999.dp), color = Color.White.copy(alpha = 0.08f)) {
-        Text(
-            text,
-            style = MaterialTheme.typography.labelSmall,
-            color = OnCardTextMuted,
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp),
-        )
+        Row(Modifier.padding(horizontal = 9.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = Color(0xFFC4A8FF), modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(text, style = MaterialTheme.typography.labelSmall, color = OnCardTextMuted)
+        }
     }
 }
 

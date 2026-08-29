@@ -1,8 +1,12 @@
 package app.nodeloc.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,6 +23,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -122,6 +128,20 @@ fun TopicDetailScreen(
     var sending by remember(args.id) { mutableStateOf(false) }
     var replyError by remember(args.id) { mutableStateOf<String?>(null) }
     var gifSheetOpen by remember(args.id) { mutableStateOf(false) }
+    var emojiSheetOpen by remember(args.id) { mutableStateOf(false) }
+    var previewMode by remember(args.id) { mutableStateOf(false) }
+    var uploading by remember(args.id) { mutableStateOf(false) }
+    val context = LocalContext.current
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            uploading = true
+            runCatching { app.nodeloc.ui.components.uploadEditorFile(context, uri) }
+                .onSuccess { url -> replyField = MarkdownEditingActions.insertAttachment(replyField, url) }
+                .onFailure { replyError = it.message ?: "上传失败，请稍后再试" }
+            uploading = false
+        }
+    }
 
     /** 官网点击楼层"回复"按钮的行为:预填 @对方用户名,再把焦点带到底部编辑器 */
     fun replyToUser(username: String) {
@@ -189,7 +209,7 @@ fun TopicDetailScreen(
         if (loadingMore || !hasMoreRoots) return
         loadingMore = true
         loadError = null
-        runCatching { DiscourseApi.nestedTopic(detail.slug, args.id, nestedPage + 1, nestedSort) }.onSuccess { response ->
+        runCatching { DiscourseApi.nestedTopicPage(detail.slug, args.id, nestedPage + 1, nestedSort) }.onSuccess { response ->
             val known = roots.associateBy { it.id }.toMutableMap()
             response.roots.forEach { known[it.id] = it }
             roots = known.values.toList()
@@ -526,11 +546,22 @@ fun TopicDetailScreen(
                     }
                     MarkdownToolbar(
                         onAction = { action ->
-                            if (action == MarkdownAction.Gif) gifSheetOpen = true
-                            else replyField = MarkdownEditingActions.apply(action, replyField)
+                            when (action) {
+                                MarkdownAction.Gif -> gifSheetOpen = true
+                                MarkdownAction.Emoji -> emojiSheetOpen = true
+                                MarkdownAction.TogglePreview -> previewMode = !previewMode
+                                MarkdownAction.Attachment -> filePicker.launch("*/*")
+                                else -> replyField = MarkdownEditingActions.apply(action, replyField)
+                            }
                         },
                     )
-                    Row(
+                    if (uploading) {
+                        Text("正在上传…", style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
+                    }
+                    if (previewMode) {
+                        CookedText(replyField.text, Modifier.fillMaxWidth().padding(16.dp))
+                    } else Row(
                         Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.Bottom,
                     ) {
@@ -567,6 +598,12 @@ fun TopicDetailScreen(
                                 Icon(Icons.AutoMirrored.Filled.Send, "发送")
                             }
                         }
+                    }
+                    if (emojiSheetOpen) {
+                        app.nodeloc.ui.components.EmojiPickerSheet(
+                            onDismiss = { emojiSheetOpen = false },
+                            onPick = { emoji -> replyField = MarkdownEditingActions.insertEmoji(replyField, emoji); emojiSheetOpen = false },
+                        )
                     }
                     if (gifSheetOpen) {
                         GifSearchSheet(
@@ -713,20 +750,16 @@ private fun PostItem(
                         }
                     }
                 }
-                CookedText(originalCooked ?: post.cooked, Modifier.padding(top = 7.dp))
+                CookedText(
+                    originalCooked ?: post.cooked,
+                    Modifier.padding(top = 7.dp),
+                    topicReferer = DiscourseApi.BASE + "/t/" + post.topicId,
+                )
                 post.lottery?.let { lottery ->
                     LotteryCard(lottery, Modifier.padding(top = 10.dp))
                 }
                 if (post.rewards.isNotEmpty()) {
-                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("⚡", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFFA000))
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            "已获得 " + post.rewards.sumOf { if (it.isDeduct) -it.amount else it.amount } + " 能量打赏",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = nc.onSurfaceVariant,
-                        )
-                    }
+                    RewardBubbleRow(post.rewards, Modifier.padding(top = 8.dp))
                 }
                 var rewardOpen by remember(post.id) { mutableStateOf(false) }
                 var editOpen by remember(post.id) { mutableStateOf(false) }
@@ -734,7 +767,7 @@ private fun PostItem(
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
                     if (canReply) {
                         IconButton(onClick = { rewardOpen = true }, modifier = Modifier.size(20.dp)) {
-                            Text("⚡", style = MaterialTheme.typography.bodyMedium, color = nc.onSurfaceVariant)
+                            Icon(Icons.Filled.Bolt, "打赏", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
                         }
                         Spacer(Modifier.width(14.dp))
                     }
@@ -798,6 +831,42 @@ private fun PostItem(
         if (nestedMode && expanded && hasMoreChildren) {
             TextButton(onClick = onLoadMoreChildren, enabled = !loadingChildren) {
                 Text(if (loadingChildren) "加载中…" else "加载更多此回复串", color = nc.primary)
+            }
+        }
+    }
+}
+
+/**
+ * 官网 discourse-rewards 的打赏气泡列表(discourse-rewards__list):每个打赏者一个独立气泡,
+ * 头像 + 留言(若有) + 金额,横向自动换行排列,不是汇总成一句"已获得 x 能量"的文案。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RewardBubbleRow(rewards: List<app.nodeloc.data.model.RewardDto>, modifier: Modifier = Modifier) {
+    val nc = LocalNodelocColors.current
+    FlowRow(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        rewards.forEach { reward ->
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(nc.surfaceVariant)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Avatar(reward.username, SiteRepo.avatarUrl(reward.avatarTemplate, 48), size = 20.dp)
+                reward.note?.takeIf { it.isNotBlank() }?.let { note ->
+                    Spacer(Modifier.width(5.dp))
+                    Text(note, style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    (if (reward.isDeduct) "-" else "+") + reward.amount,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (reward.isDeduct) MaterialTheme.colorScheme.error else nc.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(2.dp))
+                Icon(Icons.Filled.Bolt, null, tint = Color(0xFFFFA000), modifier = Modifier.size(13.dp))
             }
         }
     }

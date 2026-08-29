@@ -11,6 +11,8 @@ object SessionStore {
     private const val PREFS = "nodeloc_session"
     private const val KEY_T = "cookie_t"
     private const val KEY_USER = "current_user_json"
+    private const val KEY_CHECKIN_DATE = "checkin_date"
+    private const val KEY_CHECKIN_USER = "checkin_user"
 
     private lateinit var prefs: SharedPreferences
 
@@ -40,10 +42,20 @@ object SessionStore {
         prefs.edit().putString(KEY_USER, json).apply()
     }
 
+    fun checkinDate(): String? = if (::prefs.isInitialized) prefs.getString(KEY_CHECKIN_DATE, null) else null
+
+    fun markCheckedIn(userId: Int, date: String) {
+        if (!::prefs.isInitialized) return
+        prefs.edit().putInt(KEY_CHECKIN_USER, userId).putString(KEY_CHECKIN_DATE, date).apply()
+    }
+
+    fun isCheckedIn(userId: Int, date: String): Boolean =
+        ::prefs.isInitialized && prefs.getInt(KEY_CHECKIN_USER, -1) == userId && prefs.getString(KEY_CHECKIN_DATE, null) == date
+
     fun clear() {
         sessionCookie = null
         csrfToken = null
         if (!::prefs.isInitialized) return
-        prefs.edit().remove(KEY_T).remove(KEY_USER).apply()
+        prefs.edit().remove(KEY_T).remove(KEY_USER).remove(KEY_CHECKIN_DATE).remove(KEY_CHECKIN_USER).apply()
     }
 }

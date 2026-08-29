@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import app.nodeloc.R
 import app.nodeloc.data.DiscourseApi
 import app.nodeloc.data.SessionRepo
+import app.nodeloc.data.SessionStore
 import app.nodeloc.data.SiteRepo
 import app.nodeloc.data.model.CategoryDto
 import app.nodeloc.data.model.TopicDto
@@ -92,6 +93,42 @@ fun TopicListScreen(
     var appendError by remember { mutableStateOf<String?>(null) }
     // 官网行为:停留期间定期检查,有新话题时顶部出现绿色横幅
     var newCount by remember { mutableIntStateOf(0) }
+
+    // 签到状态由服务端结果驱动;同一页面内防止重复点击
+    var checkinLoading by remember { mutableStateOf(false) }
+    var checkinDone by remember { mutableStateOf(false) }
+    var checkinMessage by remember { mutableStateOf<String?>(null) }
+
+    val me = SessionRepo.currentUser.collectAsState().value
+    val today = remember { java.time.LocalDate.now().toString() }
+    LaunchedEffect(me?.id, today) {
+        checkinDone = me?.let { SessionStore.isCheckedIn(it.id, today) } == true
+    }
+
+    fun checkIn() {
+        if (checkinLoading || checkinDone || SessionRepo.currentUser.value == null) return
+        checkinLoading = true
+        checkinMessage = null
+        scope.launch {
+            runCatching { DiscourseApi.checkIn() }
+                .onSuccess { result ->
+                    checkinDone = result.success
+                    if (result.success) {
+                        SessionStore.markCheckedIn(SessionRepo.currentUser.value!!.id, result.userDate ?: today)
+                    }
+                    checkinMessage = if (result.success) "签到成功，获得 ${result.points} 能量" else "签到失败"
+                }
+                .onFailure { error -> checkinMessage = error.message ?: "签到失败，请稍后再试" }
+            checkinLoading = false
+        }
+    }
+
+    LaunchedEffect(checkinMessage) {
+        if (checkinMessage != null) {
+            delay(3500)
+            checkinMessage = null
+        }
+    }
 
     suspend fun refresh() {
         state = ListState.Loading
@@ -163,7 +200,14 @@ fun TopicListScreen(
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(nc.background)) {
-        OfficialTopBar(onOpenDrawer = onOpenDrawer, onOpenSearch = onOpenSearch, onOpenLogin = onOpenLogin)
+        OfficialTopBar(
+            onOpenDrawer = onOpenDrawer,
+            onOpenSearch = onOpenSearch,
+            onOpenLogin = onOpenLogin,
+            checkinLoading = checkinLoading,
+            checkinDone = checkinDone,
+            onCheckin = ::checkIn,
+        )
         // 官网风格新话题横幅:浅绿底品牌绿字,点击静默刷新并回顶
         if (newCount > 0) {
             Surface(
@@ -246,6 +290,15 @@ fun TopicListScreen(
             }
         }
     }
+        checkinMessage?.let { message ->
+            Surface(
+                color = nc.primary.copy(alpha = 0.14f),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 62.dp),
+            ) {
+                Text(message, color = nc.primary, style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+            }
+        }
         // 官网移动端"新建话题"是绿色圆角胶囊按钮而非悬浮 FAB,
         // 但用户要求的是右下角常驻绿色圆形加号,故这里用 FAB 形式还原官网配色。
         val me = SessionRepo.currentUser.collectAsState().value
@@ -266,7 +319,14 @@ fun TopicListScreen(
 }
 
 @Composable
-private fun OfficialTopBar(onOpenDrawer: () -> Unit, onOpenSearch: () -> Unit, onOpenLogin: () -> Unit) {
+private fun OfficialTopBar(
+    onOpenDrawer: () -> Unit,
+    onOpenSearch: () -> Unit,
+    onOpenLogin: () -> Unit,
+    checkinLoading: Boolean,
+    checkinDone: Boolean,
+    onCheckin: () -> Unit,
+) {
     val nc = LocalNodelocColors.current
     val me = SessionRepo.currentUser.collectAsState().value
     Row(
@@ -284,15 +344,18 @@ private fun OfficialTopBar(onOpenDrawer: () -> Unit, onOpenSearch: () -> Unit, o
             )
         }
         if (me != null) {
-            // 官网行为:签到状态无独立接口,纯前端 localStorage 记忆;
-            // 暂不接后端调用,仅还原图标位置与形态
-            IconButton(onClick = {}) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_calendar_heart),
-                    contentDescription = "每日签到",
-                    tint = nc.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
+            // 官网签到插件:点击后通过 POST /checkin 获取服务端结果
+            IconButton(onClick = onCheckin, enabled = !checkinLoading && !checkinDone) {
+                if (checkinLoading) {
+                    CircularProgressIndicator(color = nc.primary, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_calendar_heart),
+                        contentDescription = if (checkinDone) "今日已签到" else "每日签到",
+                        tint = if (checkinDone) nc.primary else nc.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
         IconButton(onClick = onOpenSearch) {

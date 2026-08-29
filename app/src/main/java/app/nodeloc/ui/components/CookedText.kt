@@ -200,7 +200,7 @@ private fun Paragraph(
                 val image = when (child) {
                     is Element -> when {
                         child.tagName().equals("img", true) && !child.isEmoji() -> child
-                        child.tagName().equals("a", true) -> child.nonEmojiImage()
+                        child.tagName().equals("a", true) -> child.imageForDisplay()
                         else -> null
                     }
                     else -> null
@@ -542,6 +542,13 @@ private fun CodeBlock(node: Element) {
 }
 
 private fun Element.isEmoji(): Boolean = hasClass("emoji")
+
+private fun Element.imageForDisplay(): Element? {
+    val image = selectFirst("img")?.takeUnless { it.isEmoji() } ?: return null
+    val text = ownText().trim()
+    val imageUrl = image.absUrl("src")
+    return if (text.isBlank() || text == image.attr("alt") || text == imageUrl || text == attr("href")) image else null
+}
 
 private fun Element.nonEmojiImage(): Element? = selectFirst("img")?.takeUnless { it.isEmoji() }
 

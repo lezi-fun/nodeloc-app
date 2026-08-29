@@ -28,10 +28,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -61,6 +63,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import app.nodeloc.data.DiscourseApi
 import app.nodeloc.util.absoluteUrl
+import app.nodeloc.util.isExternalHttpUrl
 import app.nodeloc.ui.theme.LocalNodelocColors
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -85,10 +88,14 @@ fun CookedText(
     val context = LocalContext.current
     val body = remember(html) { Jsoup.parseBodyFragment(html, DiscourseApi.BASE).body() }
     var previewUrl by remember { mutableStateOf<String?>(null) }
-    fun openUrl(url: String) {
+    var pendingExternalUrl by remember { mutableStateOf<String?>(null) }
+    fun launchUrl(url: String) {
         runCatching {
             context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
         }
+    }
+    fun openUrl(url: String) {
+        if (isExternalHttpUrl(url)) pendingExternalUrl = url else launchUrl(url)
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         body.childNodes().forEach {
@@ -96,6 +103,30 @@ fun CookedText(
         }
     }
     previewUrl?.let { url -> ImagePreviewDialog(url, onDismiss = { previewUrl = null }) }
+    pendingExternalUrl?.let { url ->
+        val host = android.net.Uri.parse(url).host ?: url
+        AlertDialog(
+            onDismissRequest = { pendingExternalUrl = null },
+            title = { Text("打开外部链接？") },
+            text = {
+                Text(
+                    "你即将离开 NodeLoc，外部网站的内容和安全性由其运营方负责。\n\n$host",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingExternalUrl = null
+                        launchUrl(url)
+                    },
+                ) { Text("继续打开") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingExternalUrl = null }) { Text("取消") }
+            },
+        )
+    }
 }
 
 @Composable

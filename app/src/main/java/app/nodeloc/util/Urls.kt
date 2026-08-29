@@ -20,3 +20,11 @@ fun absoluteUrl(src: String?, base: String): String? {
         else -> "$trimmedBase/$s"
     }
 }
+
+/** 仅识别需要在离开 NodeLoc 前确认的外部 HTTP(S) 地址。 */
+fun isExternalHttpUrl(url: String?, siteHosts: Set<String> = setOf("www.nodeloc.com", "nodeloc.com")): Boolean {
+    val uri = runCatching { java.net.URI(url?.trim().orEmpty()) }.getOrNull() ?: return false
+    val scheme = uri.scheme?.lowercase() ?: return false
+    val host = uri.host?.lowercase() ?: return false
+    return scheme in setOf("http", "https") && host !in siteHosts
+}

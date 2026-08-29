@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
@@ -25,7 +23,6 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ConfirmationNumber
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator

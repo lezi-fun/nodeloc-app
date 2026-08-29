@@ -1,5 +1,6 @@
 package app.nodeloc.data
 
+import app.nodeloc.data.model.CheckinResponseDto
 import app.nodeloc.data.model.CsrfDto
 import app.nodeloc.data.model.CurrentSessionDto
 import app.nodeloc.data.model.CurrentUserDto
@@ -13,13 +14,16 @@ import app.nodeloc.data.model.LotteryActionResultDto
 import app.nodeloc.data.model.LotteryDto
 import app.nodeloc.data.model.NestedChildrenDto
 import app.nodeloc.data.model.NestedTopicDto
+import app.nodeloc.data.model.NestedTopicPageDto
 import app.nodeloc.data.model.PostDto
 import app.nodeloc.data.model.PostCookedDto
 import app.nodeloc.data.model.PostEditResponseDto
+import app.nodeloc.data.model.PostPreviewDto
 import app.nodeloc.data.model.PostReplyHistoryDto
 import app.nodeloc.data.model.PostRepliesDto
 import app.nodeloc.data.model.PostsChunkDto
 import app.nodeloc.data.model.RewardActionResultDto
+import app.nodeloc.data.model.UploadResponseDto
 import app.nodeloc.data.model.UserActionDto
 import app.nodeloc.data.model.UserActionsResponseDto
 import app.nodeloc.data.model.UserProfileDto
@@ -39,14 +43,22 @@ import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 
 object DiscourseApi {
     const val BASE = "https://www.nodeloc.com"
     private const val HOST = "www.nodeloc.com"
     @Volatile private var cachedBadgeStyles: List<BadgeStyleDto>? = null
 
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    /**
+     * coerceInputValues：服务端某些字段(如用户 name)理论上是非空字符串,但实际会返回 JSON null
+     * (用户未填写昵称时)。没有这个开关,遇到「类型非空但值是 null」会直接抛异常导致整页崩溃;
+     * 开启后 kotlinx.serialization 会自动回退到该字段声明的默认值,而不是让整个反序列化失败。
+     */
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
     /** 会话 cookie:长期 _t 由 SessionStore 持久化,临时 _forum_session 仅存内存 */
     private val sessionCookieJar = object : CookieJar {
@@ -68,7 +80,10 @@ object DiscourseApi {
     }
 
     private val client = OkHttpClient.Builder()
-        .callTimeout(java.time.Duration.ofSeconds(25))
+        .connectTimeout(java.time.Duration.ofSeconds(15))
+        .readTimeout(java.time.Duration.ofSeconds(45))
+        .writeTimeout(java.time.Duration.ofSeconds(30))
+        .callTimeout(java.time.Duration.ofSeconds(60))
         .cookieJar(sessionCookieJar)
         .addInterceptor { chain ->
             chain.proceed(
@@ -93,11 +108,20 @@ object DiscourseApi {
     suspend fun latest(page: Int = 0): LatestDto =
         get("/latest.json?no_definitions=true&page=" + page)
 
+    /**
+     * include_raw=true 是编辑功能的前提:服务端 PostStreamSerializerMixin 只在这个 query
+     * 参数为真时才会给每个楼层塞未渲染的 raw 字段(且仍受权限过滤,非本人/非 staff 楼层
+     * 服务端本来就不会真的下发内容),没带这个参数时 raw 恒为 null,编辑框只能拿到空文本。
+     */
     suspend fun topic(id: Long): TopicDetailDto =
-        get("/t/" + id + ".json?track_visit=false")
+        get("/t/" + id + ".json?track_visit=false&include_raw=true")
 
     suspend fun nestedTopic(slug: String, id: Long, page: Int = 0, sort: String = "top"): NestedTopicDto =
-        get("/n/" + slug + "/" + id + ".json?page=" + page + "&sort=" + sort)
+        get("/n/" + slug + "/" + id + ".json?page=" + page + "&sort=" + sort + "&include_raw=true")
+
+    /** 嵌套话题的后续根楼层分页;响应只含 roots 分页字段,不含 topic/op_post。 */
+    suspend fun nestedTopicPage(slug: String, id: Long, page: Int = 0, sort: String = "top"): NestedTopicPageDto =
+        get("/n/" + slug + "/" + id + ".json?page=" + page + "&sort=" + sort + "&include_raw=true")
 
     suspend fun nestedChildren(
         slug: String,
@@ -108,7 +132,7 @@ object DiscourseApi {
         sort: String = "top",
     ): NestedChildrenDto = get(
         "/n/" + slug + "/" + id + "/children/" + parentPostNumber +
-            ".json?page=" + page + "&sort=" + sort + "&depth=" + depth.coerceAtLeast(1),
+            ".json?page=" + page + "&sort=" + sort + "&depth=" + depth.coerceAtLeast(1) + "&include_raw=true",
     )
 
     suspend fun hasActiveSession(): Boolean = withContext(Dispatchers.IO) {
@@ -214,6 +238,55 @@ object DiscourseApi {
         }
     }
 
+    /** NodeLoc discourse-checkin 插件:nonce 在客户端生成,服务端只校验本次请求一致性。 */
+    suspend fun checkIn(): CheckinResponseDto {
+        val nonce = buildString {
+            repeat(2) {
+                append(java.util.UUID.randomUUID().toString().replace("-", ""))
+            }
+        }.take(26)
+        val form = FormBody.Builder()
+            .add("nonce", nonce)
+            .add("timestamp", System.currentTimeMillis().toString())
+            .build()
+        val (code, body) = writeRequest("/checkin") {
+            header("X-Discourse-Checkin", "true")
+                .header("X-Checkin-Nonce", nonce)
+                .post(form)
+        }
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        return json.decodeFromString(CheckinResponseDto.serializer(), body)
+    }
+
+    /** 使用 Discourse 的预览端点把 Markdown 转成 cooked HTML。 */
+    suspend fun previewPost(raw: String): PostPreviewDto {
+        val form = FormBody.Builder().add("raw", raw).build()
+        val (code, body) = postForm("/posts/preview.json", form)
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        return json.decodeFromString(body)
+    }
+
+    /** 上传编辑器附件,与 Discourse Composer 使用同一 multipart 字段 file。 */
+    suspend fun uploadAttachment(file: java.io.File, mimeType: String): UploadResponseDto = withContext(Dispatchers.IO) {
+        val csrf = fetchCsrf()
+        val requestBody = file.asRequestBody(mimeType.toMediaType())
+        val multipart = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("file", file.name, requestBody)
+            .build()
+        val request = Request.Builder()
+            .url(BASE + "/uploads.json")
+            .header("X-Requested-With", "XMLHttpRequest")
+            .header("X-CSRF-Token", csrf)
+            .post(multipart)
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string()
+            if (!response.isSuccessful || body == null) throw httpError(response.code, body)
+            json.decodeFromString(UploadResponseDto.serializer(), body)
+        }
+    }
+
     suspend fun site(): SiteDto =
         get("/site.json")
 
@@ -239,6 +312,7 @@ object DiscourseApi {
                 .newBuilder()
                 .apply { ids.take(20).forEach { addQueryParameter("post_ids[]", it.toString()) } }
                 .addQueryParameter("include_suggested", "false")
+                .addQueryParameter("include_raw", "true")
                 .build()
             val req = Request.Builder().url(url).build()
             client.newCall(req).execute().use { resp ->

@@ -62,9 +62,13 @@ jobs:
           chmod +x ./gradlew
           ./gradlew testReleaseUnitTest --stacktrace
 
-      - name: Assemble release APK
+      - name: Assemble release APK with version metadata
         if: steps.guard.outputs.present == 'true'
+        env:
+          APP_VERSION: ${{ steps.rel.outputs.name }}
+          APP_VERSION_CODE: ${{ github.run_number }}
         run: |
+          echo "构建版本: ${APP_VERSION} (${APP_VERSION_CODE})"
           chmod +x ./gradlew
           ./gradlew assembleRelease --stacktrace
 

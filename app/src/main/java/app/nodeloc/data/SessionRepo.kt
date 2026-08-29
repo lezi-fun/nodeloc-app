@@ -9,7 +9,7 @@ import kotlinx.serialization.json.Json
 
 /** 登录态单例:冷启动先用缓存用户恢复,再异步经 /session/current.json 校验 */
 object SessionRepo {
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
     private val _currentUser = MutableStateFlow<CurrentUserDto?>(null)
     val currentUser: StateFlow<CurrentUserDto?> = _currentUser.asStateFlow()

@@ -4,15 +4,29 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.FormatBold
+import androidx.compose.material.icons.filled.FormatItalic
+import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.FormatListNumbered
+import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.Gif
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import app.nodeloc.ui.theme.LocalNodelocColors
@@ -24,31 +38,35 @@ import app.nodeloc.ui.theme.LocalNodelocColors
  * 依赖各自独立的后端服务,不属于本次"编辑排版"范围,故未实现。
  */
 enum class MarkdownAction {
-    Bold, Italic, Heading, Link, Quote, Code, BulletList, OrderedList, Gif
+    Bold, Italic, Heading, Link, Quote, Code, BulletList, OrderedList, Emoji, Attachment, Gif, TogglePreview
 }
 
+/** 图标名对照官网 discourse/lib/composer/toolbar.ts 各按钮的真实图标(bold/italic/link/quote-right/code/list-ul/list-ol) */
 @Composable
 fun MarkdownToolbar(onAction: (MarkdownAction) -> Unit, modifier: Modifier = Modifier) {
     val nc = LocalNodelocColors.current
     Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 2.dp)) {
-        ToolbarButton("B", FontWeight.Bold) { onAction(MarkdownAction.Bold) }
-        ToolbarButton("I", FontWeight.Normal) { onAction(MarkdownAction.Italic) }
-        ToolbarButton("H", FontWeight.Bold) { onAction(MarkdownAction.Heading) }
-        ToolbarButton("🔗", FontWeight.Normal) { onAction(MarkdownAction.Link) }
-        ToolbarButton("❝", FontWeight.Bold) { onAction(MarkdownAction.Quote) }
-        ToolbarButton("</>", FontWeight.Normal) { onAction(MarkdownAction.Code) }
-        ToolbarButton("•≡", FontWeight.Normal) { onAction(MarkdownAction.BulletList) }
-        ToolbarButton("1.≡", FontWeight.Normal) { onAction(MarkdownAction.OrderedList) }
-        ToolbarButton("GIF", FontWeight.Bold) { onAction(MarkdownAction.Gif) }
+        ToolbarButton(Icons.Filled.FormatBold, "粗体") { onAction(MarkdownAction.Bold) }
+        ToolbarButton(Icons.Filled.FormatItalic, "斜体") { onAction(MarkdownAction.Italic) }
+        ToolbarButton(Icons.Filled.Title, "标题") { onAction(MarkdownAction.Heading) }
+        ToolbarButton(Icons.Filled.Link, "链接") { onAction(MarkdownAction.Link) }
+        ToolbarButton(Icons.Filled.FormatQuote, "引用") { onAction(MarkdownAction.Quote) }
+        ToolbarButton(Icons.Filled.Code, "代码") { onAction(MarkdownAction.Code) }
+        ToolbarButton(Icons.Filled.FormatListBulleted, "无序列表") { onAction(MarkdownAction.BulletList) }
+        ToolbarButton(Icons.Filled.FormatListNumbered, "有序列表") { onAction(MarkdownAction.OrderedList) }
+        ToolbarButton(Icons.Filled.Face, "表情") { onAction(MarkdownAction.Emoji) }
+        ToolbarButton(Icons.Filled.AttachFile, "上传附件") { onAction(MarkdownAction.Attachment) }
+        ToolbarButton(Icons.Filled.Gif, "插入 GIF") { onAction(MarkdownAction.Gif) }
+        ToolbarButton(Icons.Filled.Visibility, "预览") { onAction(MarkdownAction.TogglePreview) }
     }
     HorizontalDivider(color = nc.outlineVariant)
 }
 
 @Composable
-private fun ToolbarButton(label: String, weight: FontWeight, onClick: () -> Unit) {
+private fun ToolbarButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
     val nc = LocalNodelocColors.current
-    TextButton(onClick = onClick) {
-        Text(label, fontWeight = weight, color = nc.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+    IconButton(onClick = onClick) {
+        Icon(icon, contentDescription, tint = nc.onSurfaceVariant, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -68,10 +86,27 @@ object MarkdownEditingActions {
             { prev -> if (prev == null) "1. " else (prev.trim().removeSuffix(".").toIntOrNull()?.plus(1) ?: 1).toString() + ". " },
             "列表条目",
         )
-        MarkdownAction.Gif -> value
+        MarkdownAction.Emoji, MarkdownAction.Attachment, MarkdownAction.Gif, MarkdownAction.TogglePreview -> value
     }
 
-    /** 官网插入 GIF 后的正文格式:![标题|宽x高](webp地址),前后各带一个换行独占一段。 */
+    fun insertEmoji(value: TextFieldValue, emoji: String): TextFieldValue {
+        val insertion = "$emoji "
+        val cursor = value.selection.max
+        val result = value.text.substring(0, cursor) + insertion + value.text.substring(cursor)
+        val position = cursor + insertion.length
+        return TextFieldValue(result, TextRange(position, position))
+    }
+
+    fun insertAttachment(value: TextFieldValue, url: String): TextFieldValue {
+        val markdown = "\n[$url]($url)\n"
+        val cursor = value.selection.max
+        val text = value.text
+        val result = text.substring(0, cursor) + markdown + text.substring(cursor)
+        val position = cursor + markdown.length
+        return TextFieldValue(result, TextRange(position, position))
+    }
+
+
     fun insertGif(value: TextFieldValue, gif: app.nodeloc.data.model.GifResultDto): TextFieldValue {
         val dims = gif.mediaFormats.webp.dims
         val dimsSuffix = if (dims.size == 2) "|${dims[0]}x${dims[1]}" else ""

@@ -16,11 +16,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +58,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import app.nodeloc.data.DiscourseApi
 import app.nodeloc.util.absoluteUrl
+import app.nodeloc.ui.theme.LocalNodelocColors
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
@@ -70,17 +74,21 @@ private sealed interface ParagraphPart {
 
 /** Discourse cooked HTML → Compose 富文本，按网页规则区分系统 emoji、自定义表情与正文图片。 */
 @Composable
-fun CookedText(html: String, modifier: Modifier = Modifier) {
+fun CookedText(
+    html: String,
+    modifier: Modifier = Modifier,
+    topicReferer: String? = null,
+) {
     val body = remember(html) { Jsoup.parseBodyFragment(html, DiscourseApi.BASE).body() }
     var previewUrl by remember { mutableStateOf<String?>(null) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        body.childNodes().forEach { RenderBlock(it, onPreview = { previewUrl = it }) }
+        body.childNodes().forEach { RenderBlock(it, topicReferer, onPreview = { previewUrl = it }) }
     }
     previewUrl?.let { url -> ImagePreviewDialog(url, onDismiss = { previewUrl = null }) }
 }
 
 @Composable
-private fun RenderBlock(node: Node, onPreview: (String) -> Unit) {
+private fun RenderBlock(node: Node, topicReferer: String?, onPreview: (String) -> Unit) {
     val nc = MaterialTheme.colorScheme
     when (node) {
         is TextNode -> if (node.text().isNotBlank()) {
@@ -91,12 +99,13 @@ private fun RenderBlock(node: Node, onPreview: (String) -> Unit) {
             node.hasClass("read-permission-notice") -> PermissionNotice(node)
             // discourse-apps 插件的小程序/小游戏嵌入点:cooked 里只有一个空占位 div,
             // 真实界面由 /apps/installs/{id}/webview 这个自包含页面提供
-            node.hasClass("discourse-app-embed") -> AppEmbedBlock(node)
+            node.hasClass("discourse-app-embed") -> AppEmbedBlock(node, topicReferer)
             else -> when (node.tagName().lowercase()) {
-                "p" -> Paragraph(node, onPreview)
+                "p" -> Paragraph(node, topicReferer, onPreview)
                 "img" -> if (node.isEmoji()) InlineFlow(Element("span").appendChild(node.clone())) else ContentImage(node, onPreview)
                 "a" -> node.nonEmojiImage()?.let { ContentImage(it, onPreview) } ?: LinkBlock(node)
-                "blockquote", "aside" -> QuoteBlock(node, onPreview)
+                "blockquote", "aside" -> QuoteBlock(node, topicReferer, onPreview)
+                "details" -> DetailsBlock(node, topicReferer, onPreview)
                 "pre" -> CodeBlock(node)
                 "ul", "ol" -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     node.children().forEachIndexed { i, li ->
@@ -106,7 +115,7 @@ private fun RenderBlock(node: Node, onPreview: (String) -> Unit) {
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = nc.onSurfaceVariant,
                             )
-                            Column { li.childNodes().forEach { RenderBlock(it, onPreview) } }
+                            Column { li.childNodes().forEach { RenderBlock(it, topicReferer, onPreview) } }
                         }
                     }
                 }
@@ -126,7 +135,7 @@ private fun RenderBlock(node: Node, onPreview: (String) -> Unit) {
 }
 
 @Composable
-private fun Paragraph(element: Element, onPreview: (String) -> Unit) {
+private fun Paragraph(element: Element, topicReferer: String?, onPreview: (String) -> Unit) {
     val parts = remember(element) {
         buildList {
             var inline = Element("span")
@@ -250,23 +259,42 @@ private fun ContentImage(node: Element, onPreview: (String) -> Unit) {
  * 直接交给 WebView 加载即可,无需再单独请求 /apps/installs/{id}/render。
  */
 @Composable
-private fun AppEmbedBlock(node: Element) {
+private fun AppEmbedBlock(node: Element, topicReferer: String?) {
     val nc = MaterialTheme.colorScheme
     val installId = node.attr("data-app-install").takeIf { it.isNotBlank() } ?: return
     val url = DiscourseApi.BASE + "/apps/installs/" + installId + "/webview"
+    var loadFailed by remember(url) { mutableStateOf(false) }
     Surface(shape = RoundedCornerShape(12.dp), color = nc.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
-        key(url) {
-            AndroidView(
-                factory = { context ->
-                    WebView(context).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        webViewClient = WebViewClient()
-                        loadUrl(url)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(520.dp),
-            )
+        if (loadFailed) {
+            Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                Text("小程序加载失败", color = nc.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            }
+        } else {
+            key(url) {
+                AndroidView(
+                    factory = { context ->
+                        WebView(context).apply {
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            // 小程序的 srcdoc 子 iframe 里内嵌了 data: URI 字体等资源,
+                            // 系统 WebView 默认对混合来源较严格,需要放开才能正常渲染
+                            settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                            settings.allowFileAccess = false
+                            webViewClient = object : WebViewClient() {
+                                override fun onReceivedError(
+                                    view: WebView,
+                                    request: android.webkit.WebResourceRequest,
+                                    error: android.webkit.WebResourceError,
+                                ) {
+                                    if (request.isForMainFrame) loadFailed = true
+                                }
+                            }
+                            loadUrl(url, topicReferer?.let { mapOf("Referer" to it) } ?: emptyMap())
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(520.dp),
+                )
+            }
         }
     }
 }
@@ -302,6 +330,50 @@ private fun PermissionNotice(node: Element) {
 }
 
 @Composable
+private fun DetailsBlock(node: Element, topicReferer: String?, onPreview: (String) -> Unit) {
+    val nc = MaterialTheme.colorScheme
+    var expanded by remember(node) { mutableStateOf(node.hasAttr("open")) }
+    val summary = remember(node) {
+        node.selectFirst(":scope > summary")?.text()?.trim().takeUnless { it.isNullOrBlank() } ?: "显示隐藏内容"
+    }
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = nc.surfaceVariant.copy(alpha = 0.55f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                Icon(
+                    if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "收起" else "展开",
+                    tint = nc.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(summary, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = nc.onSurface)
+            }
+            if (expanded) {
+                Column(
+                    Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    node.childNodes().forEach { child ->
+                        if (child is Element && child.tagName().equals("summary", true)) return@forEach
+                        RenderBlock(child, topicReferer, onPreview)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun LinkBlock(node: Element) {
     val nc = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -328,7 +400,7 @@ private fun LinkBlock(node: Element) {
 }
 
 @Composable
-private fun QuoteBlock(node: Element, onPreview: (String) -> Unit) {
+private fun QuoteBlock(node: Element, topicReferer: String?, onPreview: (String) -> Unit) {
     val nc = MaterialTheme.colorScheme
     val title = node.selectFirst(".title")?.text()?.trim()
     Surface(shape = RoundedCornerShape(12.dp), color = nc.surfaceVariant) {
@@ -339,7 +411,7 @@ private fun QuoteBlock(node: Element, onPreview: (String) -> Unit) {
             Column(Modifier.padding(top = if (title.isNullOrBlank()) 0.dp else 4.dp)) {
                 node.childNodes().forEach { child ->
                     if (child is Element && child.className().contains("title")) return@forEach
-                    RenderBlock(child, onPreview)
+                    RenderBlock(child, topicReferer, onPreview)
                 }
             }
         }

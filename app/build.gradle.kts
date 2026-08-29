@@ -5,6 +5,17 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+val appVersion = providers.gradleProperty("appVersion")
+    .orElse(providers.environmentVariable("APP_VERSION"))
+    .orElse("0.1.0")
+    .get()
+    .removePrefix("v")
+val appVersionCode = providers.gradleProperty("appVersionCode")
+    .orElse(providers.environmentVariable("APP_VERSION_CODE"))
+    .map { it.toIntOrNull()?.coerceAtLeast(1) ?: 1 }
+    .orElse(1)
+    .get()
+
 android {
     namespace = "app.nodeloc"
     compileSdk = 34
@@ -13,8 +24,8 @@ android {
         applicationId = "app.nodeloc"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = appVersionCode
+        versionName = appVersion
     }
 
     val ksFile: String = System.getenv("NL_KEYSTORE")

@@ -117,6 +117,29 @@ data class SessionResponseDto(
     @SerialName("second_factor_method") val secondFactorMethod: Int? = null,
 )
 
+/** POST /posts/preview.json 响应。 */
+@Serializable
+data class PostPreviewDto(val cooked: String = "")
+
+/** POST /uploads.json 响应;短链接优先用于 Markdown 插入。 */
+@Serializable
+data class UploadResponseDto(
+    val url: String? = null,
+    @SerialName("short_url") val shortUrl: String? = null,
+    @SerialName("original_filename") val originalFilename: String? = null,
+    val error: String? = null,
+)
+
+/** POST /checkin 响应;签到插件返回当天日期和获得的能量。 */
+@Serializable
+data class CheckinResponseDto(
+    val success: Boolean = false,
+    val points: Int = 0,
+    @SerialName("user_date") val userDate: String? = null,
+    val timezone: String? = null,
+    val message: String? = null,
+)
+
 @Serializable
 data class CsrfDto(val csrf: String = "")
 
@@ -193,6 +216,16 @@ data class NestedTopicDto(
     val sort: String = "top",
     @SerialName("effective_sort") val effectiveSort: String = sort,
     @SerialName("has_more_roots") val hasMoreRoots: Boolean = false,
+)
+
+/** 嵌套话题继续加载根楼层时的分页响应;服务端不会重复返回 topic/op_post。 */
+@Serializable
+data class NestedTopicPageDto(
+    val roots: List<PostDto> = emptyList(),
+    @SerialName("has_more_roots") val hasMoreRoots: Boolean = false,
+    val page: Int = 0,
+    val sort: String = "top",
+    @SerialName("effective_sort") val effectiveSort: String = sort,
 )
 
 @Serializable

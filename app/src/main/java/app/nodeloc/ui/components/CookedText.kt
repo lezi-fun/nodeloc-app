@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -62,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import app.nodeloc.data.DiscourseApi
+import app.nodeloc.data.SessionStore
 import app.nodeloc.util.absoluteUrl
 import app.nodeloc.util.isExternalHttpUrl
 import app.nodeloc.ui.theme.LocalNodelocColors
@@ -350,6 +352,15 @@ private fun AppEmbedBlock(node: Element, topicReferer: String?) {
                             // 系统 WebView 默认对混合来源较严格,需要放开才能正常渲染
                             settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                             settings.allowFileAccess = false
+                            settings.userAgentString = settings.userAgentString + " NodeLocAndroid/0.1"
+                            CookieManager.getInstance().setAcceptCookie(true)
+                            buildString {
+                                SessionStore.tCookie?.let { append("_t=").append(it).append(';') }
+                                SessionStore.sessionCookie?.let { append("_forum_session=").append(it).append(';') }
+                            }.takeIf { it.isNotBlank() }?.let {
+                                CookieManager.getInstance().setCookie(DiscourseApi.BASE, it)
+                            }
+                            CookieManager.getInstance().flush()
                             webViewClient = object : WebViewClient() {
                                 override fun onReceivedError(
                                     view: WebView,

@@ -726,8 +726,20 @@ private fun PostItem(
                     val badgeStyle = badgeStyles.firstOrNull { it.name == title }
                     BadgeTitleText(title, badgeStyle, nc.onSurfaceVariant, modifier = Modifier.padding(top = 1.dp))
                 }
-                Text(post.username + " · " + post.postNumber + " 楼", style = MaterialTheme.typography.labelSmall,
-                    color = nc.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                    Text(post.username + " · " + post.postNumber + " 楼", style = MaterialTheme.typography.labelSmall,
+                        color = nc.onSurfaceVariant)
+                    post.mobileSource?.takeIf { it.isNotBlank() }?.let { device ->
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            Modifier
+                                .background(nc.surfaceVariant, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(device, style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant)
+                        }
+                    }
+                }
                 // 内容本地化:cooked 默认已是站点语言译文;is_localized 时提供"查看原文"入口,
                 // 点击一次性切到原文并隐藏提示条(与官网行为一致,不提供切回译文)。
                 var showingOriginal by remember(post.id) { mutableStateOf(false) }

@@ -43,6 +43,12 @@ fun EmojiPickerSheet(onDismiss: () -> Unit, onPick: (String) -> Unit) {
     var customEmojis by remember { mutableStateOf<List<CustomEmojiDto>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
 
+    // 表情名称前缀到显示名称的映射
+    val groupDisplayNames = mapOf(
+        "xhj" to "SIMSIMI",
+        "ac" to "AC"
+    )
+
     LaunchedEffect(Unit) {
         val allEmojis = runCatching { DiscourseApi.customEmojis() }.getOrDefault(emptyList())
         // 只保留自定义上传的表情（路径包含 uploads），过滤掉标准 Unicode 表情
@@ -75,9 +81,10 @@ fun EmojiPickerSheet(onDismiss: () -> Unit, onPick: (String) -> Unit) {
             } else if (filteredByGroup.isEmpty()) {
                 Text("没有找到表情", modifier = Modifier.padding(16.dp))
             } else {
-                filteredByGroup.forEach { (group, emojis) ->
+                filteredByGroup.forEach { (prefix, emojis) ->
+                    val displayName = groupDisplayNames[prefix] ?: prefix.uppercase()
                     Text(
-                        group.uppercase(),
+                        displayName,
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
                     )

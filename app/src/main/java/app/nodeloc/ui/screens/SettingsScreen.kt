@@ -215,7 +215,7 @@ fun SettingsScreen(onBack: () -> Unit, onLogout: () -> Unit) {
                         showLogoutDialog = false
                         scope.launch {
                             runCatching {
-                                app.nodeloc.data.SessionStore.clearSession()
+                                app.nodeloc.data.SessionStore.clear()
                             }
                             onLogout()
                         }

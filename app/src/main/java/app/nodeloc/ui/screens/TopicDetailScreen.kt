@@ -584,8 +584,8 @@ fun TopicDetailScreen(
                     } else Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
                         // 显示正在回复的提示
                         if (replyToPostNumber > 0) {
-                            val replyingToPost = postFlow?.value?.posts?.find { it.postNumber == replyToPostNumber }
-                            replyingToPost?.let { post ->
+                            val replyingToPost = posts.find { it.postNumber == replyToPostNumber }
+                            replyingToPost?.let { replyPost ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -593,7 +593,7 @@ fun TopicDetailScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "正在回复 @${post.username}",
+                                        text = "正在回复 @${replyPost.username}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = nc.primary
                                     )
@@ -666,6 +666,7 @@ fun TopicDetailScreen(
                             },
                         )
                     }
+                }
                 }
                 false -> {
                     // 未登录:整条回复栏作为登录引导

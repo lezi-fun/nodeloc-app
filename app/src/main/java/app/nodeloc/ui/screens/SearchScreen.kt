@@ -629,7 +629,7 @@ private fun UserResultRow(user: app.nodeloc.data.model.UserDto, onOpenProfile: (
         ) {
             app.nodeloc.ui.components.Avatar(
                 user.username,
-                app.nodeloc.data.SiteRepo.staticAvatarUrl(user.avatarTemplate),
+                app.nodeloc.data.SiteRepo.avatarUrl(user.avatarTemplate),
                 48.dp,
             )
             Spacer(Modifier.width(12.dp))
@@ -640,14 +640,6 @@ private fun UserResultRow(user: app.nodeloc.data.model.UserDto, onOpenProfile: (
                     fontWeight = FontWeight.Medium,
                     color = nc.onBackground,
                 )
-                user.name?.takeIf { it.isNotBlank() }?.let { name ->
-                    Text(
-                        name,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = nc.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
             }
         }
     }
@@ -671,16 +663,6 @@ private fun CategoryResultRow(category: CategoryDto, onClick: () -> Unit) {
                     fontWeight = FontWeight.Medium,
                     color = nc.onBackground,
                 )
-                category.description?.takeIf { it.isNotBlank() }?.let { desc ->
-                    Text(
-                        desc,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = nc.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
             }
         }
     }

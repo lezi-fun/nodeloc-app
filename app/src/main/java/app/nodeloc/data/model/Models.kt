@@ -500,6 +500,8 @@ data class PostDto(
      * permanently_delete_check 接口二次确认,这里只用来控制按钮是否展示。
      */
     @SerialName("can_permanently_delete") val canPermanentlyDelete: Boolean = false,
+    /** 发帖设备信息显示文本(如"Pixel 8 Pro"),由服务端根据发帖时提交的设备信息生成 */
+    @SerialName("mobile_source") val mobileSource: String? = null,
 ) {
     /** 徽章文案:管理员 → ADMIN,版主 → MOD,其余职员 → STAFF,普通用户无。 */
     val staffBadge: String?

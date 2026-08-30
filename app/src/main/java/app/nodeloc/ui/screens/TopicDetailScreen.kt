@@ -563,12 +563,16 @@ fun TopicDetailScreen(
                                 MarkdownAction.Emoji -> emojiSheetOpen = true
                                 MarkdownAction.TogglePreview -> {
                                     if (!previewMode) {
+                                        replyError = null
                                         scope.launch {
                                             runCatching { DiscourseApi.previewPost(replyField.text) }
                                                 .onSuccess { previewHtml = it.cooked; previewMode = true }
                                                 .onFailure { replyError = it.message ?: "预览失败，请稍后再试" }
                                         }
-                                    } else previewMode = false
+                                    } else {
+                                        previewMode = false
+                                        replyError = null
+                                    }
                                 }
                                 MarkdownAction.Attachment -> filePicker.launch("*/*")
                                 else -> replyField = MarkdownEditingActions.apply(action, replyField)

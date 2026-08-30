@@ -51,6 +51,7 @@ fun AppRoot() {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = false,
         drawerContent = {
             NodeLocDrawer(
                 onClose = { scope.launch { drawerState.close() } },

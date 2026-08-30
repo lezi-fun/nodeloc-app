@@ -52,8 +52,7 @@ fun EmojiPickerSheet(onDismiss: () -> Unit, onPick: (String) -> Unit) {
 
     val filteredCustom = remember(query, customEmojis) {
         customEmojis.filter {
-            query.isBlank() || it.name.contains(query, ignoreCase = true) ||
-                it.aliases.any { alias -> alias.contains(query, ignoreCase = true) }
+            query.isBlank() || it.name.contains(query, ignoreCase = true)
         }
     }
     val filteredCommon = remember(query) { commonEmoji.filter { query.isBlank() || it.contains(query) } }

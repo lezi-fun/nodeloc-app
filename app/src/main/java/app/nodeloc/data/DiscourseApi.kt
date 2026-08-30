@@ -48,6 +48,7 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -94,9 +95,13 @@ object DiscourseApi {
         .callTimeout(java.time.Duration.ofSeconds(60))
         .cookieJar(sessionCookieJar)
         .addInterceptor { chain ->
+            // 使用类似移动浏览器的 User-Agent，包含设备信息
+            val userAgent = "Mozilla/5.0 (Linux; Android ${Build.VERSION.RELEASE}; ${Build.MODEL}) " +
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 " +
+                    "NodeLocApp/0.1"
             chain.proceed(
                 chain.request().newBuilder()
-                    .header("User-Agent", "NodeLocAndroid/0.1 (+https://github.com/lezi-fun/nodeloc-app)")
+                    .header("User-Agent", userAgent)
                     .header("Accept", "application/json")
                     .build()
             )
@@ -286,14 +291,13 @@ object DiscourseApi {
                 append(java.util.UUID.randomUUID().toString().replace("-", ""))
             }
         }.take(26)
-        val form = FormBody.Builder()
-            .add("nonce", nonce)
-            .add("timestamp", System.currentTimeMillis().toString())
-            .build()
+        // 使用 JSON 格式发送，与官网一致
+        val jsonBody = """{"nonce":"$nonce","timestamp":${System.currentTimeMillis()}}"""
+            .toRequestBody("application/json; charset=utf-8".toMediaType())
         val (code, body) = writeRequest("/checkin") {
             header("X-Discourse-Checkin", "true")
                 .header("X-Checkin-Nonce", nonce)
-                .post(form)
+                .post(jsonBody)
         }
         if (code !in 200..299 || body == null) throw httpError(code, body)
         return json.decodeFromString(CheckinResponseDto.serializer(), body)

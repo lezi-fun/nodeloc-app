@@ -64,7 +64,8 @@ data class UserSearchDto(val users: List<UserDto> = emptyList())
 data class CustomEmojiDto(
     val name: String = "",
     val url: String = "",
-    val aliases: List<String> = emptyList(),
+    val group: String = "",
+    val tonable: Boolean = false,
 )
 
 /** /session/current.json 与登录成功返回的当前用户 */

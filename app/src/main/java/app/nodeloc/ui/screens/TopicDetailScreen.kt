@@ -130,6 +130,7 @@ fun TopicDetailScreen(
     var gifSheetOpen by remember(args.id) { mutableStateOf(false) }
     var emojiSheetOpen by remember(args.id) { mutableStateOf(false) }
     var previewMode by remember(args.id) { mutableStateOf(false) }
+    var previewHtml by remember(args.id) { mutableStateOf("") }
     var uploading by remember(args.id) { mutableStateOf(false) }
     val context = LocalContext.current
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -549,7 +550,15 @@ fun TopicDetailScreen(
                             when (action) {
                                 MarkdownAction.Gif -> gifSheetOpen = true
                                 MarkdownAction.Emoji -> emojiSheetOpen = true
-                                MarkdownAction.TogglePreview -> previewMode = !previewMode
+                                MarkdownAction.TogglePreview -> {
+                                    if (!previewMode) {
+                                        scope.launch {
+                                            runCatching { DiscourseApi.previewPost(replyField.text) }
+                                                .onSuccess { previewHtml = it.cooked; previewMode = true }
+                                                .onFailure { replyError = it.message ?: "预览失败，请稍后再试" }
+                                        }
+                                    } else previewMode = false
+                                }
                                 MarkdownAction.Attachment -> filePicker.launch("*/*")
                                 else -> replyField = MarkdownEditingActions.apply(action, replyField)
                             }
@@ -560,7 +569,7 @@ fun TopicDetailScreen(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
                     }
                     if (previewMode) {
-                        CookedText(replyField.text, Modifier.fillMaxWidth().padding(16.dp))
+                        CookedText(previewHtml, Modifier.fillMaxWidth().padding(16.dp))
                     } else Row(
                         Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.Bottom,

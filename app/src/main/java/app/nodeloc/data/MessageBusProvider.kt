@@ -25,7 +25,6 @@ fun ProvideMessageBus(content: @Composable () -> Unit) {
             subscribe("/delete")
             subscribe("/recover")
             subscribe("/destroy")
-            subscribe("/refresh_client")
             subscribe("/global/asset-version")
             subscribe("/file-change")
             subscribe("/site/banner")
@@ -37,6 +36,12 @@ fun ProvideMessageBus(content: @Composable () -> Unit) {
     DisposableEffect(Unit) {
         // 启动 MessageBus 长轮询
         messageBus.start()
+
+        // 应用启动时检查更新（只检查一次）
+        AppUpdateManager.checkForUpdates(
+            currentVersionName = "1.0.0", // TODO: 从 BuildConfig 获取
+            scope = scope
+        )
 
         onDispose {
             messageBus.stop()

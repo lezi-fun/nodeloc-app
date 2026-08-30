@@ -198,8 +198,6 @@ class MessageBusClient(
         when {
             msg.channel == "/latest" -> handleLatestUpdate(msg)
             msg.channel.startsWith("/topic/") -> handleTopicUpdate(msg)
-            msg.channel == "/refresh_client" -> handleRefreshClient(msg)
-            msg.channel == "/global/asset-version" -> handleAssetVersionUpdate(msg)
             msg.channel.startsWith("/private-messages/") -> handlePrivateMessage(msg)
         }
     }
@@ -218,30 +216,6 @@ class MessageBusClient(
     private fun handleTopicUpdate(msg: MessageBusMessage) {
         // TODO: 通知话题页刷新内容
         Log.d(TAG, "Topic update: ${msg.data}")
-    }
-
-    /**
-     * 处理 /refresh_client 频道消息（强制刷新）
-     */
-    private fun handleRefreshClient(msg: MessageBusMessage) {
-        Log.w(TAG, "Client refresh requested: ${msg.data}")
-        // 服务端要求刷新，检查 GitHub 更新
-        AppUpdateManager.checkForUpdates(
-            currentVersionName = "1.0.0", // TODO: 从 BuildConfig 获取
-            scope = scope
-        )
-    }
-
-    /**
-     * 处理 /global/asset-version 频道消息（资源版本更新）
-     */
-    private fun handleAssetVersionUpdate(msg: MessageBusMessage) {
-        Log.i(TAG, "Asset version updated: ${msg.data}")
-        // 资源版本更新，检查 GitHub 更新
-        AppUpdateManager.checkForUpdates(
-            currentVersionName = "1.0.0", // TODO: 从 BuildConfig 获取
-            scope = scope
-        )
     }
 
     /**

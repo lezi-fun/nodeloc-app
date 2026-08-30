@@ -16,9 +16,11 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.NavigationDrawerItem
@@ -62,7 +64,7 @@ private val topicIdInUrl = Regex("""/t/[^/]+/(\d+)""")
  * 没有自定义标签时回退到站点默认(有图标的节点 / 站点热门标签)。
  */
 @Composable
-fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopicId: (Long) -> Unit = {}, onOpenProfile: (String) -> Unit = {}) {
+fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopicId: (Long) -> Unit = {}, onOpenProfile: (String) -> Unit = {}, onOpenSettings: () -> Unit = {}) {
     val nc = LocalNodelocColors.current
     // svg 解码由全局 ImageLoader(NodelocApp)提供
     var nodes by remember { mutableStateOf<List<CategoryDto>>(emptyList()) }
@@ -109,12 +111,19 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopic
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Image(
                     painter = painterResource(R.drawable.nodeloc_logo),
                     contentDescription = "NodeLoc",
                     modifier = Modifier.size(width = 96.dp, height = 28.dp),
                 )
+                IconButton(onClick = {
+                    scope.launch { onClose() }
+                    onOpenSettings()
+                }) {
+                    Icon(Icons.Filled.Settings, contentDescription = "设置", tint = nc.onSurfaceVariant)
+                }
             }
             // 用户区:未登录显示登录入口,已登录显示头像/用户名/信任等级
             val user = me

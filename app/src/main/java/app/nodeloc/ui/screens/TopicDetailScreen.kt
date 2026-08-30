@@ -389,9 +389,6 @@ fun TopicDetailScreen(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = {}) {
-                Icon(Icons.Filled.MoreVert, "更多", tint = nc.onSurfaceVariant)
-            }
         }
         HorizontalDivider(color = nc.outlineVariant)
 

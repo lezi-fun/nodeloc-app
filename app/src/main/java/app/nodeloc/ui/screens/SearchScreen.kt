@@ -132,7 +132,7 @@ data class AdvancedFilters(
 }
 
 @Composable
-fun SearchScreen(onBack: () -> Unit, onOpenTopic: (TopicDto) -> Unit) {
+fun SearchScreen(onBack: () -> Unit, onOpenTopic: (TopicDto) -> Unit, onOpenProfile: (String) -> Unit) {
     val nc = LocalNodelocColors.current
     val focusRequester = remember { FocusRequester() }
     var query by rememberSaveable { mutableStateOf("") }
@@ -288,57 +288,88 @@ fun SearchScreen(onBack: () -> Unit, onOpenTopic: (TopicDto) -> Unit) {
                     )
                 }
             }
-            is SearchState.Ready -> if (s.result.topics.isEmpty() && s.result.posts.isEmpty()) {
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("没有找到相关话题", color = nc.onSurfaceVariant)
+            is SearchState.Ready -> {
+                val hasResults = when (adv.searchType) {
+                    "users" -> s.result.users.isNotEmpty()
+                    "categories" -> s.result.categories.isNotEmpty()
+                    else -> s.result.topics.isNotEmpty() || s.result.posts.isNotEmpty()
                 }
-            } else {
-                LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
-                    item(key = "order") {
-                        Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Spacer(Modifier.weight(1f))
-                            Text("排序依据", style = MaterialTheme.typography.labelMedium, color = nc.onSurfaceVariant)
-                            Spacer(Modifier.width(6.dp))
-                            DropdownField(
-                                header = "相关度",
-                                options = listOf(
-                                    "" to "相关度",
-                                    "latest_topic" to "最新话题",
-                                    "latest" to "最新发帖",
-                                    "likes" to "最多点赞",
-                                    "views" to "最多浏览",
-                                ),
-                                selectedValue = adv.order,
-                                onSelect = { v -> updateFilters(adv.copy(order = v ?: "")) },
-                                compact = true,
-                            )
+                if (!hasResults) {
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        val emptyText = when (adv.searchType) {
+                            "users" -> "没有找到相关用户"
+                            "categories" -> "没有找到相关节点或标签"
+                            else -> "没有找到相关话题"
                         }
+                        Text(emptyText, color = nc.onSurfaceVariant)
                     }
-                    if (adv.postsOnly) {
-                        // 帖子模式:逐条列出匹配的帖子
-                        items(s.result.posts, key = { "p${it.id}" }) { post ->
-                            PostResultRow(
-                                post = post,
-                                topicTitle = s.result.topics.firstOrNull { it.id == post.topicId }?.title.orEmpty(),
-                                onClick = {
-                                    s.result.topics.firstOrNull { it.id == post.topicId }?.let(onOpenTopic)
-                                },
-                            )
-                            HorizontalDivider(color = nc.outlineVariant)
+                } else {
+                    LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+                        // 只在话题/帖子搜索时显示排序选项
+                        if (adv.searchType.isBlank()) {
+                            item(key = "order") {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Spacer(Modifier.weight(1f))
+                                    Text("排序依据", style = MaterialTheme.typography.labelMedium, color = nc.onSurfaceVariant)
+                                    Spacer(Modifier.width(6.dp))
+                                    DropdownField(
+                                        header = "相关度",
+                                        options = listOf(
+                                            "" to "相关度",
+                                            "latest_topic" to "最新话题",
+                                            "latest" to "最新发帖",
+                                            "likes" to "最多点赞",
+                                            "views" to "最多浏览",
+                                        ),
+                                        selectedValue = adv.order,
+                                        onSelect = { v -> updateFilters(adv.copy(order = v ?: "")) },
+                                        compact = true,
+                                    )
+                                }
+                            }
                         }
-                    } else {
-                        items(s.result.topics, key = { it.id }) { topic ->
-                            SearchResultRow(
-                                topic = topic,
-                                blurb = s.result.posts.associateBy { it.topicId }[topic.id],
-                                category = catMap[topic.categoryId]
-                                    ?: s.result.categories.firstOrNull { it.id == topic.categoryId },
-                                onClick = { onOpenTopic(topic) },
-                            )
-                            HorizontalDivider(color = nc.outlineVariant)
+                        when (adv.searchType) {
+                            "users" -> {
+                                items(s.result.users, key = { "u${it.id}" }) { user ->
+                                    UserResultRow(user = user, onOpenProfile = onOpenProfile)
+                                    HorizontalDivider(color = nc.outlineVariant)
+                                }
+                            }
+                            "categories" -> {
+                                items(s.result.categories, key = { "c${it.id}" }) { category ->
+                                    CategoryResultRow(category = category, onClick = { /* TODO: 打开分类页面 */ })
+                                    HorizontalDivider(color = nc.outlineVariant)
+                                }
+                            }
+                            else -> {
+                                if (adv.postsOnly) {
+                                    // 帖子模式:逐条列出匹配的帖子
+                                    items(s.result.posts, key = { "p${it.id}" }) { post ->
+                                        PostResultRow(
+                                            post = post,
+                                            topicTitle = s.result.topics.firstOrNull { it.id == post.topicId }?.title.orEmpty(),
+                                            onClick = {
+                                                s.result.topics.firstOrNull { it.id == post.topicId }?.let(onOpenTopic)
+                                            },
+                                        )
+                                        HorizontalDivider(color = nc.outlineVariant)
+                                    }
+                                } else {
+                                    items(s.result.topics, key = { it.id }) { topic ->
+                                        SearchResultRow(
+                                            topic = topic,
+                                            blurb = s.result.posts.associateBy { it.topicId }[topic.id],
+                                            category = catMap[topic.categoryId]
+                                                ?: s.result.categories.firstOrNull { it.id == topic.categoryId },
+                                            onClick = { onOpenTopic(topic) },
+                                        )
+                                        HorizontalDivider(color = nc.outlineVariant)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -582,6 +613,74 @@ private fun PostResultRow(post: SearchPostDto, topicTitle: String, onClick: () -
                 )
                 Spacer(Modifier.weight(1f))
                 Text(SiteRepo.relativeTime(post.createdAt), style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** 用户搜索结果行 */
+@Composable
+private fun UserResultRow(user: app.nodeloc.data.model.UserDto, onOpenProfile: (String) -> Unit) {
+    val nc = LocalNodelocColors.current
+    Surface(onClick = { onOpenProfile(user.username) }, color = nc.surface, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            app.nodeloc.ui.components.Avatar(
+                user.username,
+                app.nodeloc.data.SiteRepo.staticAvatarUrl(user.avatarTemplate),
+                48.dp,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    user.username,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = nc.onBackground,
+                )
+                user.name?.takeIf { it.isNotBlank() }?.let { name ->
+                    Text(
+                        name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = nc.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** 分类/节点搜索结果行 */
+@Composable
+private fun CategoryResultRow(category: CategoryDto, onClick: () -> Unit) {
+    val nc = LocalNodelocColors.current
+    Surface(onClick = onClick, color = nc.surface, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(12.dp).background(hexColor(category.color), CircleShape))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    category.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = nc.onBackground,
+                )
+                category.description?.takeIf { it.isNotBlank() }?.let { desc ->
+                    Text(
+                        desc,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = nc.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
             }
         }
     }

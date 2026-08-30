@@ -51,11 +51,15 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import android.os.Build
 
 object DiscourseApi {
     const val BASE = "https://www.nodeloc.com"
     private const val HOST = "www.nodeloc.com"
     @Volatile private var cachedBadgeStyles: List<BadgeStyleDto>? = null
+
+    /** 设备信息签名，格式：设备型号, 产品型号, 制造商, SDK版本 */
+    private val deviceSignature = "${Build.DEVICE}, ${Build.MODEL}, ${Build.MANUFACTURER}, ${Build.VERSION.SDK_INT}"
 
     /**
      * coerceInputValues：服务端某些字段(如用户 name)理论上是非空字符串,但实际会返回 JSON null
@@ -607,6 +611,38 @@ object DiscourseApi {
         if (code !in 200..299 || body == null) throw httpError(code, body)
         SessionStore.csrfToken = null
         return json.decodeFromString(CreatedPostDto.serializer(), body).topicId
+    }
+
+    /** 获取当前用户的发帖来源显示级别设置 */
+    suspend fun getPostSourceLevel(): Int = withContext(Dispatchers.IO) {
+        val url = (BASE + "/mobile/preferences/post_source").toHttpUrl()
+        val req = Request.Builder().url(url).build()
+        client.newCall(req).execute().use { resp ->
+            val body = resp.body?.string()
+            if (!resp.isSuccessful || body == null) throw httpError(resp.code, body)
+            // 服务端返回 { "level": 0-4 }
+            json.parseToJsonElement(body).jsonObject["level"]?.toString()?.toIntOrNull() ?: 0
+        }
+    }
+
+    /** 设置发帖来源显示级别: 0=不显示, 1=仅客户端, 2=客户端+平台, 3=品牌, 4=型号 */
+    suspend fun setPostSourceLevel(level: Int) {
+        require(level in 0..4) { "level must be 0-4" }
+        val form = FormBody.Builder()
+            .add("level", level.toString())
+            .build()
+        val (code, body) = writeRequest("/mobile/preferences/post_source") {
+            put(form)
+        }
+        if (code !in 200..299) throw httpError(code, body)
+    }
+
+    /** 清除历史帖子中的来源信息 */
+    suspend fun clearPostSourceHistory() {
+        val (code, body) = writeRequest("/mobile/preferences/post_source/history") {
+            delete()
+        }
+        if (code !in 200..299) throw httpError(code, body)
     }
 
 }

@@ -293,7 +293,7 @@ fun TopicListScreen(
         checkinMessage?.let { message ->
             Surface(
                 color = nc.primary.copy(alpha = 0.14f),
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 62.dp),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 72.dp),
             ) {
                 Text(message, color = nc.primary, style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))

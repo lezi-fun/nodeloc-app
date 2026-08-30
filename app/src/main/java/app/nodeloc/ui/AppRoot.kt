@@ -18,6 +18,7 @@ import app.nodeloc.ui.components.NodeLocDrawer
 import app.nodeloc.ui.screens.CreateTopicScreen
 import app.nodeloc.ui.screens.LoginScreen
 import app.nodeloc.ui.screens.SearchScreen
+import app.nodeloc.ui.screens.SettingsScreen
 import app.nodeloc.ui.screens.TopicDetailScreen
 import app.nodeloc.ui.screens.TopicListScreen
 import app.nodeloc.ui.screens.UserProfileScreen
@@ -35,6 +36,7 @@ fun AppRoot() {
     var loginOpen by rememberSaveable { mutableStateOf(false) }
     var createTopicOpen by rememberSaveable { mutableStateOf(false) }
     var profileUsername by rememberSaveable { mutableStateOf<String?>(null) }
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -65,6 +67,10 @@ fun AppRoot() {
         enabled = createTopicOpen && detailJson == null && !searchOpen && !loginOpen &&
             profileUsername == null && !drawerState.isOpen,
     ) { createTopicOpen = false }
+    BackHandler(
+        enabled = settingsOpen && detailJson == null && !searchOpen && !loginOpen &&
+            !createTopicOpen && profileUsername == null && !drawerState.isOpen,
+    ) { settingsOpen = false }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -75,11 +81,13 @@ fun AppRoot() {
                 onOpenLogin = { loginOpen = true },
                 onOpenTopicId = { id -> detailJson = DetailArgs(id, "", 0, false).toJson() },
                 onOpenProfile = { username -> profileUsername = username },
+                onOpenSettings = { settingsOpen = true },
             )
         },
     ) {
         val d = detailJson?.let { runCatching { DetailArgs.fromJson(it) }.getOrNull() }
         when {
+            settingsOpen -> SettingsScreen(onBack = { settingsOpen = false })
             profileUsername != null -> UserProfileScreen(
                 username = profileUsername!!,
                 onBack = { profileUsername = null },

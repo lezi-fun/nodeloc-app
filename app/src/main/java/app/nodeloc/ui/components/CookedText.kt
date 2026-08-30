@@ -555,10 +555,8 @@ private fun CodeBlock(node: Element) {
 private fun Element.isEmoji(): Boolean = hasClass("emoji")
 
 private fun Element.imageForDisplay(): Element? {
-    val image = selectFirst("img")?.takeUnless { it.isEmoji() } ?: return null
-    val text = ownText().trim()
-    val imageUrl = image.absUrl("src")
-    return if (text.isBlank() || text == image.attr("alt") || text == imageUrl || text == attr("href")) image else null
+    // 返回链接中的图片元素，无论是否有额外文本
+    return selectFirst("img")?.takeUnless { it.isEmoji() }
 }
 
 private fun Element.nonEmojiImage(): Element? = selectFirst("img")?.takeUnless { it.isEmoji() }

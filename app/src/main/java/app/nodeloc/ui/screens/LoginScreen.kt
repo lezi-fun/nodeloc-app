@@ -1,5 +1,8 @@
 package app.nodeloc.ui.screens
 
+import android.content.Context
+import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,6 +28,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -36,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,8 +49,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import app.nodeloc.R
 import app.nodeloc.data.ApiException
+import app.nodeloc.data.DiscourseApi
 import app.nodeloc.data.SecondFactorRequiredException
 import app.nodeloc.data.SessionRepo
+import app.nodeloc.data.model.AuthProviderDto
 import app.nodeloc.ui.components.LoadingMark
 import app.nodeloc.ui.theme.LocalNodelocColors
 import kotlinx.coroutines.launch
@@ -54,12 +62,21 @@ import kotlinx.coroutines.launch
 fun LoginScreen(onBack: () -> Unit) {
     val nc = LocalNodelocColors.current
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var totp by rememberSaveable { mutableStateOf("") }
     var secondFactorToken by rememberSaveable { mutableStateOf<String?>(null) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var authProviders by remember { mutableStateOf<List<AuthProviderDto>>(emptyList()) }
+
+    // 加载第三方登录列表
+    remember {
+        scope.launch {
+            authProviders = runCatching { DiscourseApi.authProviders() }.getOrDefault(emptyList())
+        }
+    }
 
     fun submit() {
         if (busy) return
@@ -172,6 +189,36 @@ fun LoginScreen(onBack: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(24.dp))
+
+            // 第三方登录分隔线
+            if (authProviders.isNotEmpty()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.weight(1f).height(1.dp).background(nc.outlineVariant))
+                    Text(
+                        "或使用第三方登录",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = nc.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                    Box(Modifier.weight(1f).height(1.dp).background(nc.outlineVariant))
+                }
+
+                // 第三方登录按钮
+                authProviders.forEach { provider ->
+                    OutlinedButton(
+                        onClick = { openAuthProvider(context, provider.name) },
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = nc.primary),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                    ) {
+                        Text(provider.prettyName ?: provider.title ?: provider.name)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
         }
     }
 }
@@ -183,3 +230,11 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     cursorColor = LocalNodelocColors.current.primary,
     focusedLabelColor = LocalNodelocColors.current.primary,
 )
+
+private fun openAuthProvider(context: Context, providerName: String) {
+    val authUrl = "${DiscourseApi.BASE}/auth/$providerName?origin=${DiscourseApi.BASE}"
+    val customTabsIntent = CustomTabsIntent.Builder()
+        .setShowTitle(true)
+        .build()
+    customTabsIntent.launchUrl(context, Uri.parse(authUrl))
+}

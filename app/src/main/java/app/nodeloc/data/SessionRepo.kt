@@ -43,6 +43,13 @@ object SessionRepo {
         return user
     }
 
+    suspend fun loginWithPayload(payload: String): CurrentUserDto {
+        val user = DiscourseApi.loginWithPayload(payload)
+        _currentUser.value = user
+        SessionStore.cacheUser(json.encodeToString(CurrentUserDto.serializer(), user))
+        return user
+    }
+
     suspend fun logout() {
         val name = _currentUser.value?.username ?: return
         runCatching { DiscourseApi.logout(name) }

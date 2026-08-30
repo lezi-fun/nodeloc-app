@@ -85,6 +85,7 @@ private sealed interface SearchState {
  */
 @Serializable
 data class AdvancedFilters(
+    val searchType: String = "", // "" = 话题/帖子, "categories" = 节点/标签, "users" = 用户
     val categorySlug: String = "",
     val tags: String = "",
     val inFilter: String = "",
@@ -164,7 +165,7 @@ fun SearchScreen(onBack: () -> Unit, onOpenTopic: (TopicDto) -> Unit) {
                     else -> {
                         state = SearchState.Loading
                         try {
-                            val result = DiscourseApi.search(term + filters.toQuerySuffix())
+                            val result = DiscourseApi.search(term + filters.toQuerySuffix(), filters.searchType)
                             state = SearchState.Ready(result)
                         } catch (e: CancellationException) {
                             throw e
@@ -208,16 +209,16 @@ fun SearchScreen(onBack: () -> Unit, onOpenTopic: (TopicDto) -> Unit) {
         HorizontalDivider(color = nc.outlineVariant)
 
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 10.dp)) {
-            // 类型:话题/帖子,对齐官网搜索框下方的类型下拉
+            // 搜索类型:话题/帖子、节点/标签、用户
             DropdownField(
                 header = "话题/帖子",
                 options = listOf(
                     "" to "话题/帖子",
-                    "topics" to "话题",
-                    "posts" to "帖子",
+                    "categories" to "节点/标签",
+                    "users" to "用户",
                 ),
-                selectedValue = if (adv.postsOnly) "posts" else "",
-                onSelect = { v -> updateFilters(adv.copy(postsOnly = v == "posts")) },
+                selectedValue = adv.searchType,
+                onSelect = { v -> updateFilters(adv.copy(searchType = v ?: "")) },
             )
             Spacer(Modifier.height(8.dp))
             // 高级筛选器折叠条

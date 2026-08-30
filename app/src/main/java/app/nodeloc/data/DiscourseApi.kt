@@ -240,6 +240,23 @@ object DiscourseApi {
         }
     }
 
+    /** 使用第三方 OAuth 返回的 payload 完成登录 */
+    suspend fun loginWithPayload(payload: String): CurrentUserDto = withContext(Dispatchers.IO) {
+        val form = FormBody.Builder().add("payload", payload).build()
+        val (code, body) = postForm("/session/current_user_confirm_session", form)
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        val r = json.decodeFromString(SessionResponseDto.serializer(), body)
+        when {
+            r.error != null -> throw ApiException(0, message = r.error)
+            r.user != null -> {
+                // 会话已切换,旧 CSRF 失效
+                SessionStore.csrfToken = null
+                r.user
+            }
+            else -> throw ApiException(0, message = "第三方登录失败,请稍后再试")
+        }
+    }
+
     /** 退出登录并清空本地会话 */
     suspend fun logout(username: String) {
         val (code, body) = postForm("/session/" + username + "/logout", FormBody.Builder().build())
@@ -312,13 +329,15 @@ object DiscourseApi {
         get("/site.json")
 
     /** 全站搜索,query 会正确 URL 编码 */
-    suspend fun search(query: String): SearchDto =
+    suspend fun search(query: String, searchType: String = ""): SearchDto =
         withContext(Dispatchers.IO) {
             val url = (BASE + "/search.json").toHttpUrl()
                 .newBuilder()
                 .addQueryParameter("q", query)
-                .build()
-            val req = Request.Builder().url(url).build()
+            if (searchType.isNotBlank()) {
+                url.addQueryParameter("type", searchType)
+            }
+            val req = Request.Builder().url(url.build()).build()
             client.newCall(req).execute().use { resp ->
                 val body = resp.body?.string()
                 if (!resp.isSuccessful || body == null) throw httpError(resp.code, body)
@@ -564,12 +583,14 @@ object DiscourseApi {
      * 在话题下发布回复(顶层)。需要登录态;失败时抛 [ApiException],
      * message 为服务端文案(如频率限制、无权限)。
      */
-    suspend fun createPost(topicId: Long, raw: String) {
+    suspend fun createPost(topicId: Long, raw: String, replyToPostNumber: Int? = null) {
         val form = FormBody.Builder()
             .add("topic_id", topicId.toString())
             .add("raw", raw)
-            .build()
-        val (code, body) = postForm("/posts", form)
+        if (replyToPostNumber != null && replyToPostNumber > 0) {
+            form.add("reply_to_post_number", replyToPostNumber.toString())
+        }
+        val (code, body) = postForm("/posts", form.build())
         if (code !in 200..299 || body == null) throw httpError(code, body)
         // 发帖成功后旧 CSRF 已消费,置空待下次重取
         SessionStore.csrfToken = null

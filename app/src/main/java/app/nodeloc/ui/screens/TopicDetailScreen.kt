@@ -125,6 +125,7 @@ fun TopicDetailScreen(
     // 底部回复栏:Markdown 编辑器(工具栏+文本框)、发送中与发送失败文案
     val replyFocusRequester = remember(args.id) { FocusRequester() }
     var replyField by remember(args.id) { mutableStateOf(TextFieldValue("")) }
+    var replyToPostNumber by remember(args.id) { mutableIntStateOf(0) }
     var sending by remember(args.id) { mutableStateOf(false) }
     var replyError by remember(args.id) { mutableStateOf<String?>(null) }
     var gifSheetOpen by remember(args.id) { mutableStateOf(false) }
@@ -145,12 +146,13 @@ fun TopicDetailScreen(
     }
 
     /** 官网点击楼层"回复"按钮的行为:预填 @对方用户名,再把焦点带到底部编辑器 */
-    fun replyToUser(username: String) {
+    fun replyToUser(username: String, postNumber: Int) {
         val mention = "@$username "
         if (!replyField.text.startsWith(mention)) {
             val text = mention + replyField.text
             replyField = TextFieldValue(text, TextRange(text.length))
         }
+        replyToPostNumber = postNumber
         runCatching { replyFocusRequester.requestFocus() }
     }
 
@@ -160,9 +162,10 @@ fun TopicDetailScreen(
         sending = true
         replyError = null
         scope.launch {
-            runCatching { DiscourseApi.createPost(args.id, text) }
+            runCatching { DiscourseApi.createPost(args.id, text, replyToPostNumber.takeIf { it > 0 }) }
                 .onSuccess {
                     replyField = TextFieldValue("")
+                    replyToPostNumber = 0
                     // 刷新楼层以显示新回复;保留登录态避免输入栏闪烁
                     reloadToken++
                 }
@@ -666,7 +669,7 @@ private fun PostItem(
     badgeStyles: List<app.nodeloc.data.model.BadgeStyleDto>,
     topicSlug: String,
     onPostDeleted: () -> Unit,
-    onReply: (String) -> Unit,
+    onReply: (String, Int) -> Unit,
 ) {
     val post = item.post
     val nc = LocalNodelocColors.current
@@ -783,7 +786,7 @@ private fun PostItem(
                     ReactionButton(post, canReact = canReply, onUpdated = onReactionUpdated)
                     if (canReply) {
                         Spacer(Modifier.width(22.dp))
-                        IconButton(onClick = { onReply(post.username) }, modifier = Modifier.size(20.dp)) {
+                        IconButton(onClick = { onReply(post.username, post.postNumber) }, modifier = Modifier.size(20.dp)) {
                             Icon(Icons.AutoMirrored.Filled.Reply, "回复", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
                         }
                     }

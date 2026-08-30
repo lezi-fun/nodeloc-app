@@ -95,10 +95,11 @@ object DiscourseApi {
         .callTimeout(java.time.Duration.ofSeconds(60))
         .cookieJar(sessionCookieJar)
         .addInterceptor { chain ->
-            // 使用类似移动浏览器的 User-Agent，包含设备信息
+            // 完全模拟真实 Android Chrome 浏览器的 User-Agent（不加自定义后缀）
+            // 服务端通过识别移动设备 User-Agent 来记录设备信息
             val userAgent = "Mozilla/5.0 (Linux; Android ${Build.VERSION.RELEASE}; ${Build.MODEL}) " +
-                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 " +
-                    "NodeLocApp/0.1"
+                    "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                    "Chrome/120.0.6099.144 Mobile Safari/537.36"
             chain.proceed(
                 chain.request().newBuilder()
                     .header("User-Agent", userAgent)

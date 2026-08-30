@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
@@ -271,6 +272,15 @@ fun PostActionsSheet(
                 label = "复制链接",
                 onClick = {
                     clipboard.setText(AnnotatedString(DiscourseApi.BASE + "/t/" + topicSlug + "/" + post.topicId + "/" + post.postNumber))
+                    onDismiss()
+                },
+            )
+            ActionRow(
+                icon = Icons.Filled.ContentCopy,
+                label = "复制 Markdown",
+                onClick = {
+                    clipboard.setText(AnnotatedString(post.raw))
+                    Toast.makeText(context, "已复制 Markdown 内容", Toast.LENGTH_SHORT).show()
                     onDismiss()
                 },
             )

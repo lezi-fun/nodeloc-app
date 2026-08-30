@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -28,11 +31,6 @@ import app.nodeloc.data.model.CustomEmojiDto
 import app.nodeloc.util.absoluteUrl
 import coil.compose.AsyncImage
 
-private val commonEmoji = listOf(
-    "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "🙂", "🙃", "😉",
-    "😍", "🥰", "😘", "😎", "🤔", "🤗", "🤩", "🥳", "😴", "😢", "😭", "😡",
-    "👍", "👎", "👏", "🙌", "🙏", "💪", "🎉", "🔥", "❤️", "💯", "✨", "✅",
-)
 
 /**
  * 与官网 emoji-picker 一致优先展示站点自定义 emoji。选择自定义 emoji 时插入 :name:，
@@ -52,61 +50,58 @@ fun EmojiPickerSheet(onDismiss: () -> Unit, onPick: (String) -> Unit) {
         loading = false
     }
 
-    val filteredCustom = remember(query, customEmojis) {
-        customEmojis.filter {
-            query.isBlank() || it.name.contains(query, ignoreCase = true)
-        }
+    val filteredByGroup = remember(query, customEmojis) {
+        customEmojis
+            .filter { query.isBlank() || it.name.contains(query, ignoreCase = true) }
+            .groupBy { it.group }
+            .toSortedMap()
     }
-    val filteredCommon = remember(query) { commonEmoji.filter { query.isBlank() || it.contains(query) } }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
                 singleLine = true,
                 label = { Text("搜索表情") },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             )
-            if (filteredCustom.isNotEmpty()) {
-                Text("站点表情", modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 2.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    filteredCustom.forEach { emoji ->
-                        AssistChip(
-                            onClick = { onPick(":${emoji.name}:") },
-                            label = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+
+            if (loading) {
+                Text("正在加载站点表情…", modifier = Modifier.padding(16.dp))
+            } else if (filteredByGroup.isEmpty()) {
+                Text("没有找到表情", modifier = Modifier.padding(16.dp))
+            } else {
+                filteredByGroup.forEach { (group, emojis) ->
+                    Text(
+                        group.uppercase(),
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        emojis.forEach { emoji ->
+                            AssistChip(
+                                onClick = { onPick(":${emoji.name}:") },
+                                label = {
                                     AsyncImage(
                                         model = absoluteUrl(emoji.url, DiscourseApi.BASE),
                                         contentDescription = emoji.name,
-                                        modifier = Modifier.size(22.dp),
+                                        modifier = Modifier.size(28.dp),
                                     )
-                                    Text(emoji.name, modifier = Modifier.padding(start = 4.dp))
-                                }
-                            },
-                        )
-                    }
-                }
-            } else if (loading) {
-                Text("正在加载站点表情…", modifier = Modifier.padding(16.dp))
-            }
-            if (customEmojis.isEmpty() && filteredCommon.isNotEmpty()) {
-                Text("常用表情", modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 2.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    filteredCommon.forEach { emoji ->
-                        AssistChip(onClick = { onPick(emoji) }, label = { Text(emoji) })
+                                },
+                            )
+                        }
                     }
                 }
             }
-            TextButton(onClick = onDismiss, modifier = Modifier.padding(bottom = 8.dp)) { Text("关闭") }
+
+            TextButton(onClick = onDismiss, modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
+                Text("关闭")
+            }
         }
     }
 }

@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,14 +52,29 @@ fun EditPostDialog(post: PostDto, onDismiss: () -> Unit, onEdited: (PostDto) -> 
     val nc = LocalNodelocColors.current
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val originalRaw = post.raw.orEmpty()
+    var originalRaw by remember(post.id) { mutableStateOf(post.raw.orEmpty()) }
     var body by remember(post.id) { mutableStateOf(TextFieldValue(originalRaw)) }
     var gifSheetOpen by remember(post.id) { mutableStateOf(false) }
     var emojiSheetOpen by remember(post.id) { mutableStateOf(false) }
     var previewMode by remember(post.id) { mutableStateOf(false) }
     var uploading by remember(post.id) { mutableStateOf(false) }
     var saving by remember(post.id) { mutableStateOf(false) }
+    var loading by remember(post.id) { mutableStateOf(post.raw == null) }
     var errorMsg by remember(post.id) { mutableStateOf<String?>(null) }
+
+    // 如果 post.raw 为 null，通过 API 获取完整内容
+    LaunchedEffect(post.id) {
+        if (post.raw == null) {
+            loading = true
+            runCatching { DiscourseApi.getPost(post.id) }
+                .onSuccess { fullPost ->
+                    originalRaw = fullPost.raw.orEmpty()
+                    body = TextFieldValue(originalRaw)
+                }
+                .onFailure { errorMsg = "无法加载帖子内容：${it.message}" }
+            loading = false
+        }
+    }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -94,7 +110,7 @@ fun EditPostDialog(post: PostDto, onDismiss: () -> Unit, onEdited: (PostDto) -> 
                 IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, "关闭", tint = nc.onBackground) }
                 Text("编辑帖子", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                     color = nc.onBackground, modifier = Modifier.weight(1f))
-                if (saving || uploading) {
+                if (loading || saving || uploading) {
                     CircularProgressIndicator(color = nc.primary, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(16.dp))
                 } else TextButton(onClick = ::save, enabled = body.text.isNotBlank()) { Text("保存编辑", color = nc.primary) }

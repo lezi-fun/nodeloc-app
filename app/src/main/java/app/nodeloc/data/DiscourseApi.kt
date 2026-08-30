@@ -414,6 +414,9 @@ object DiscourseApi {
     /** 内容本地化"查看原文":与官网一致,每次调用在原文/译文之间切换,不是幂等的单向操作。 */
     suspend fun postOriginalCooked(postId: Long): String = get<PostCookedDto>("/posts/$postId/cooked.json").cooked
 
+    /** 获取单个帖子的完整信息，包含 raw 字段用于编辑 */
+    suspend fun getPost(postId: Long): PostDto = get("/posts/$postId.json")
+
     /**
      * 编辑楼层正文。[originalRaw] 是编辑前拿到的原文,服务端用它做冲突检测(官网字段名 original_text)。
      * 成功返回楼层最新完整 PostDto,直接替换本地缓存即可同步 UI。

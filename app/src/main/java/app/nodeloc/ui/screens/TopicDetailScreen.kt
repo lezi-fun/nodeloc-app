@@ -160,13 +160,8 @@ fun TopicDetailScreen(
         }
     }
 
-    /** 官网点击楼层"回复"按钮的行为:预填 @对方用户名,再把焦点带到底部编辑器 */
+    /** 官网点击楼层"回复"按钮的行为:设置 reply_to_post_number 并聚焦编辑器，不插入 @ */
     fun replyToUser(username: String, postNumber: Int) {
-        val mention = "@$username "
-        if (!replyField.text.startsWith(mention)) {
-            val text = mention + replyField.text
-            replyField = TextFieldValue(text, TextRange(text.length))
-        }
         replyToPostNumber = postNumber
         runCatching { replyFocusRequester.requestFocus() }
     }
@@ -585,10 +580,41 @@ fun TopicDetailScreen(
                     }
                     if (previewMode) {
                         CookedText(previewHtml, Modifier.fillMaxWidth().padding(16.dp))
-                    } else Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.Bottom,
-                    ) {
+                    } else Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        // 显示正在回复的提示
+                        if (replyToPostNumber > 0) {
+                            val replyingToPost = postFlow?.value?.posts?.find { it.postNumber == replyToPostNumber }
+                            replyingToPost?.let { post ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "正在回复 @${post.username}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = nc.primary
+                                    )
+                                    Spacer(Modifier.weight(1f))
+                                    IconButton(
+                                        onClick = { replyToPostNumber = 0 },
+                                        modifier = Modifier.size(20.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "取消回复",
+                                            tint = nc.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Bottom,
+                        ) {
                         OutlinedTextField(
                             value = replyField,
                             onValueChange = { replyField = it },
@@ -621,6 +647,7 @@ fun TopicDetailScreen(
                             } else {
                                 Icon(Icons.AutoMirrored.Filled.Send, "发送")
                             }
+                        }
                         }
                     }
                     if (emojiSheetOpen) {
@@ -751,7 +778,7 @@ private fun PostItem(
                                 .background(nc.surfaceVariant, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
-                            Text(device, style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant)
+                            Text("来自 $device", style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant)
                         }
                     }
                 }
@@ -800,23 +827,26 @@ private fun PostItem(
                 var rewardOpen by remember(post.id) { mutableStateOf(false) }
                 var editOpen by remember(post.id) { mutableStateOf(false) }
                 var actionsOpen by remember(post.id) { mutableStateOf(false) }
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
-                    if (canReply) {
-                        IconButton(onClick = { rewardOpen = true }, modifier = Modifier.size(20.dp)) {
-                            Icon(Icons.Filled.Bolt, "打赏", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                // 使用 key 确保点赞后重组时按钮不会消失
+                key(post.id, canReply) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
+                        if (canReply) {
+                            IconButton(onClick = { rewardOpen = true }, modifier = Modifier.size(20.dp)) {
+                                Icon(Icons.Filled.Bolt, "打赏", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(Modifier.width(14.dp))
                         }
-                        Spacer(Modifier.width(14.dp))
-                    }
-                    ReactionButton(post, canReact = canReply, onUpdated = onReactionUpdated)
-                    if (canReply) {
+                        ReactionButton(post, canReact = canReply, onUpdated = onReactionUpdated)
+                        if (canReply) {
+                            Spacer(Modifier.width(22.dp))
+                            IconButton(onClick = { onReply(post.username, post.postNumber) }, modifier = Modifier.size(20.dp)) {
+                                Icon(Icons.AutoMirrored.Filled.Reply, "回复", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                            }
+                        }
                         Spacer(Modifier.width(22.dp))
-                        IconButton(onClick = { onReply(post.username, post.postNumber) }, modifier = Modifier.size(20.dp)) {
-                            Icon(Icons.AutoMirrored.Filled.Reply, "回复", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                        IconButton(onClick = { actionsOpen = true }, modifier = Modifier.size(20.dp)) {
+                            Icon(Icons.Filled.MoreHoriz, "更多操作", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
                         }
-                    }
-                    Spacer(Modifier.width(22.dp))
-                    IconButton(onClick = { actionsOpen = true }, modifier = Modifier.size(20.dp)) {
-                        Icon(Icons.Filled.MoreHoriz, "更多操作", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
                     }
                 }
                 if (actionsOpen) {

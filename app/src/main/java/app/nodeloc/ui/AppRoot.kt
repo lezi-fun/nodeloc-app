@@ -97,7 +97,15 @@ private fun AppRootContent() {
     ) {
         val d = detailJson?.let { runCatching { DetailArgs.fromJson(it) }.getOrNull() }
         when {
-            settingsOpen -> SettingsScreen(onBack = { settingsOpen = false })
+            settingsOpen -> SettingsScreen(
+                onBack = { settingsOpen = false },
+                onLogout = {
+                    settingsOpen = false
+                    detailJson = null
+                    profileUsername = null
+                    loginOpen = true
+                }
+            )
             profileUsername != null -> UserProfileScreen(
                 username = profileUsername!!,
                 onBack = { profileUsername = null },

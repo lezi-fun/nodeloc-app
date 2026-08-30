@@ -46,7 +46,9 @@ fun EmojiPickerSheet(onDismiss: () -> Unit, onPick: (String) -> Unit) {
     var loading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        customEmojis = runCatching { DiscourseApi.customEmojis() }.getOrDefault(emptyList())
+        val allEmojis = runCatching { DiscourseApi.customEmojis() }.getOrDefault(emptyList())
+        // 只保留自定义上传的表情（路径包含 uploads），过滤掉标准 Unicode 表情
+        customEmojis = allEmojis.filter { it.url.contains("/uploads/") }
         loading = false
     }
 

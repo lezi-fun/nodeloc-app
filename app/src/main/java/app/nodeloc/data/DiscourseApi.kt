@@ -291,13 +291,17 @@ object DiscourseApi {
                 append(java.util.UUID.randomUUID().toString().replace("-", ""))
             }
         }.take(26)
-        // 使用 JSON 格式发送，与官网一致
-        val jsonBody = """{"nonce":"$nonce","timestamp":${System.currentTimeMillis()}}"""
-            .toRequestBody("application/json; charset=utf-8".toMediaType())
+        // 使用表单编码，与官网一致
+        val form = FormBody.Builder()
+            .add("nonce", nonce)
+            .add("timestamp", System.currentTimeMillis().toString())
+            .build()
         val (code, body) = writeRequest("/checkin") {
-            header("X-Discourse-Checkin", "true")
+            header("Discourse-Logged-In", "true")
+                .header("Discourse-Present", "true")
+                .header("X-Discourse-Checkin", "true")
                 .header("X-Checkin-Nonce", nonce)
-                .post(jsonBody)
+                .post(form)
         }
         if (code !in 200..299 || body == null) throw httpError(code, body)
         return json.decodeFromString(CheckinResponseDto.serializer(), body)

@@ -5,6 +5,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
+import app.nodeloc.BuildConfig
 
 /**
  * 全局 MessageBus 实例
@@ -39,7 +40,7 @@ fun ProvideMessageBus(content: @Composable () -> Unit) {
 
         // 应用启动时检查更新（只检查一次）
         AppUpdateManager.checkForUpdates(
-            currentVersionName = "1.0.0", // TODO: 从 BuildConfig 获取
+            currentVersionName = BuildConfig.VERSION_NAME,
             scope = scope
         )
 

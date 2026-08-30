@@ -7,7 +7,7 @@ plugins {
 
 val appVersion = providers.gradleProperty("appVersion")
     .orElse(providers.environmentVariable("APP_VERSION"))
-    .orElse("0.1.0")
+    .orElse("0.0.1")
     .get()
     .removePrefix("v")
 val appVersionCode = providers.gradleProperty("appVersionCode")

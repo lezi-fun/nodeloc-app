@@ -5,6 +5,7 @@ import app.nodeloc.data.model.CustomEmojiDto
 import app.nodeloc.data.model.CsrfDto
 import app.nodeloc.data.model.CurrentSessionDto
 import app.nodeloc.data.model.CurrentUserDto
+import app.nodeloc.data.model.AuthProviderDto
 import app.nodeloc.data.model.BadgeStyleDto
 import app.nodeloc.data.model.BookmarkCreatedDto
 import app.nodeloc.data.model.CreatedPostDto
@@ -120,6 +121,10 @@ object DiscourseApi {
         }
         return result.filter { it.name.isNotBlank() && it.url.isNotBlank() }
     }
+
+    suspend fun authProviders(): List<AuthProviderDto> =
+        get("/auth/list-providers")
+
     suspend fun latest(page: Int = 0): LatestDto =
         get("/latest.json?no_definitions=true&page=" + page)
 

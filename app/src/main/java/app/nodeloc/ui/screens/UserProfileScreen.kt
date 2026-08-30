@@ -17,6 +17,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -63,6 +66,7 @@ private sealed interface ProfileState {
 fun UserProfileScreen(username: String, onBack: () -> Unit, onOpenTopic: (Long) -> Unit) {
     val nc = LocalNodelocColors.current
     var state by remember(username) { mutableStateOf<ProfileState>(ProfileState.Loading) }
+    var showMessageDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(username) {
         state = ProfileState.Loading
@@ -104,13 +108,22 @@ fun UserProfileScreen(username: String, onBack: () -> Unit, onOpenTopic: (Long) 
                     }
                 }
             }
-            is ProfileState.Ready -> ProfileContent(s, onOpenTopic)
+            is ProfileState.Ready -> ProfileContent(s, onOpenTopic, onSendMessage = { showMessageDialog = true })
         }
+    }
+
+    // 发私信对话框
+    if (showMessageDialog && state is ProfileState.Ready) {
+        app.nodeloc.ui.components.SendMessageDialog(
+            recipientUsername = (state as ProfileState.Ready).profile.username,
+            onDismiss = { showMessageDialog = false },
+            onSent = { showMessageDialog = false }
+        )
     }
 }
 
 @Composable
-private fun ProfileContent(state: ProfileState.Ready, onOpenTopic: (Long) -> Unit) {
+private fun ProfileContent(state: ProfileState.Ready, onOpenTopic: (Long) -> Unit, onSendMessage: () -> Unit) {
     val nc = LocalNodelocColors.current
     val profile = state.profile
     val badgeStyle = profile.title?.let { title -> state.badgeStyles.firstOrNull { it.name == title } }
@@ -148,6 +161,23 @@ private fun ProfileContent(state: ProfileState.Ready, onOpenTopic: (Long) -> Uni
                     )
                 }
                 Spacer(Modifier.height(14.dp))
+
+                // 发私信按钮
+                Button(
+                    onClick = onSendMessage,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = nc.primary,
+                        contentColor = nc.onPrimary
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    Icon(Icons.Filled.Email, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("发私信")
+                }
+
+                Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                     StatChip("能量", profile.gamificationScore.toString())
                     StatChip("徽章", profile.badgeCount.toString())

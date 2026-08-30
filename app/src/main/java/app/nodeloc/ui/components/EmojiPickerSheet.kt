@@ -53,7 +53,10 @@ fun EmojiPickerSheet(onDismiss: () -> Unit, onPick: (String) -> Unit) {
     val filteredByGroup = remember(query, customEmojis) {
         customEmojis
             .filter { query.isBlank() || it.name.contains(query, ignoreCase = true) }
-            .groupBy { it.group }
+            .groupBy { emoji ->
+                // 按名称前缀分组（提取字母部分）
+                emoji.name.takeWhile { it.isLetter() }
+            }
             .toSortedMap()
     }
 

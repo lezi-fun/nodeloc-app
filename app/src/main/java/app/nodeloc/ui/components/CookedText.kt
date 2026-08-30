@@ -26,6 +26,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
@@ -62,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
+import app.nodeloc.MiniAppActivity
 import app.nodeloc.data.DiscourseApi
 import app.nodeloc.data.SessionStore
 import app.nodeloc.util.absoluteUrl
@@ -237,21 +240,86 @@ private fun InlineFlow(element: Element, onOpenUrl: (String) -> Unit) {
                 when (n) {
                     is TextNode -> {
                         if (n.text().isEmpty()) return
-                        withStyle(
-                            SpanStyle(
-                                fontWeight = if (bold) FontWeight.Bold else null,
-                                fontStyle = if (italic) FontStyle.Italic else null,
-                                fontFamily = if (mono) FontFamily.Monospace else null,
-                                color = if (link != null) Color(0xFF009966) else Color.Unspecified,
-                                textDecoration = link?.let { TextDecoration.Underline },
-                            ),
-                        ) {
-                            if (link != null) {
-                                pushStringAnnotation("URL", resolveUrl(link) ?: link)
-                                append(n.text())
-                                pop()
-                            } else {
-                                append(n.text())
+
+                        // 处理 Markdown 图片语法 ![alt](url)
+                        val text = n.text()
+                        val markdownImageRegex = Regex("""!\[([^\]]*)\]\(([^)]+)\)""")
+                        val matches = markdownImageRegex.findAll(text).toList()
+
+                        if (matches.isNotEmpty()) {
+                            var lastIndex = 0
+                            matches.forEach { match ->
+                                // 添加图片前的文本
+                                if (match.range.first > lastIndex) {
+                                    val beforeText = text.substring(lastIndex, match.range.first)
+                                    withStyle(
+                                        SpanStyle(
+                                            fontWeight = if (bold) FontWeight.Bold else null,
+                                            fontStyle = if (italic) FontStyle.Italic else null,
+                                            fontFamily = if (mono) FontFamily.Monospace else null,
+                                            color = if (link != null) Color(0xFF009966) else Color.Unspecified,
+                                            textDecoration = link?.let { TextDecoration.Underline },
+                                        ),
+                                    ) {
+                                        append(beforeText)
+                                    }
+                                }
+
+                                // 添加图片占位符
+                                val alt = match.groupValues[1]
+                                val imageUrl = match.groupValues[2]
+                                val resolvedUrl = resolveUrl(imageUrl)
+                                if (resolvedUrl != null) {
+                                    val key = "md-image-${inline.size}"
+                                    inline[key] = InlineTextContent(
+                                        Placeholder(20.sp, 20.sp, PlaceholderVerticalAlign.TextCenter),
+                                    ) {
+                                        AsyncImage(
+                                            model = resolvedUrl,
+                                            contentDescription = alt.ifBlank { null },
+                                            modifier = Modifier.size(20.dp),
+                                            contentScale = ContentScale.Fit,
+                                        )
+                                    }
+                                    appendInlineContent(key, alt.ifBlank { "[图片]" })
+                                }
+
+                                lastIndex = match.range.last + 1
+                            }
+
+                            // 添加最后一个图片后的文本
+                            if (lastIndex < text.length) {
+                                val afterText = text.substring(lastIndex)
+                                withStyle(
+                                    SpanStyle(
+                                        fontWeight = if (bold) FontWeight.Bold else null,
+                                        fontStyle = if (italic) FontStyle.Italic else null,
+                                        fontFamily = if (mono) FontFamily.Monospace else null,
+                                        color = if (link != null) Color(0xFF009966) else Color.Unspecified,
+                                        textDecoration = link?.let { TextDecoration.Underline },
+                                    ),
+                                ) {
+                                    append(afterText)
+                                }
+                            }
+                        } else {
+                            // 没有 Markdown 图片，正常处理
+                            withStyle(
+                                SpanStyle(
+                                    fontWeight = if (bold) FontWeight.Bold else null,
+                                    fontStyle = if (italic) FontStyle.Italic else null,
+                                    fontFamily = if (mono) FontFamily.Monospace else null,
+                                    color = if (link != null) Color(0xFF009966) else Color.Unspecified,
+                                    textDecoration = link?.let { TextDecoration.Underline },
+                                ),
+                            ) {
+                                if (link != null) {
+                                    pushStringAnnotation("URL", resolveUrl(link) ?: link)
+                                    append(text)
+                                    pop()
+                                } else {
+                                    append(text)
+                                }
                             }
                         }
                     }
@@ -327,55 +395,59 @@ private fun ContentImage(node: Element, onPreview: (String) -> Unit) {
 
 /**
  * discourse-apps 小程序嵌入(如贪吃蛇等站内小游戏)。
- * data-app-install 是安装 ID,拼出的 webview 地址本身是自包含页面(内部已用 srcdoc iframe 隔离),
- * 直接交给 WebView 加载即可,无需再单独请求 /apps/installs/{id}/render。
+ * 显示为可点击的卡片，点击后打开 MiniAppActivity。
  */
 @Composable
 private fun AppEmbedBlock(node: Element, topicReferer: String?) {
     val nc = MaterialTheme.colorScheme
+    val context = LocalContext.current
     val installId = node.attr("data-app-install").takeIf { it.isNotBlank() } ?: return
+    val appName = node.attr("data-app-name").takeIf { it.isNotBlank() } ?: "小程序"
     val url = DiscourseApi.BASE + "/apps/installs/" + installId + "/webview"
-    var loadFailed by remember(url) { mutableStateOf(false) }
-    Surface(shape = RoundedCornerShape(12.dp), color = nc.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
-        if (loadFailed) {
-            Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                Text("小程序加载失败", color = nc.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = nc.surfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                val intent = android.content.Intent(context, MiniAppActivity::class.java).apply {
+                    putExtra("url", url)
+                    putExtra("name", appName)
+                }
+                context.startActivity(intent)
             }
-        } else {
-            key(url) {
-                AndroidView(
-                    factory = { context ->
-                        WebView(context).apply {
-                            settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = true
-                            // 小程序的 srcdoc 子 iframe 里内嵌了 data: URI 字体等资源,
-                            // 系统 WebView 默认对混合来源较严格,需要放开才能正常渲染
-                            settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                            settings.allowFileAccess = false
-                            settings.userAgentString = settings.userAgentString + " NodeLocAndroid/0.1"
-                            CookieManager.getInstance().setAcceptCookie(true)
-                            buildString {
-                                SessionStore.tCookie?.let { append("_t=").append(it).append(';') }
-                                SessionStore.sessionCookie?.let { append("_forum_session=").append(it).append(';') }
-                            }.takeIf { it.isNotBlank() }?.let {
-                                CookieManager.getInstance().setCookie(DiscourseApi.BASE, it)
-                            }
-                            CookieManager.getInstance().flush()
-                            webViewClient = object : WebViewClient() {
-                                override fun onReceivedError(
-                                    view: WebView,
-                                    request: android.webkit.WebResourceRequest,
-                                    error: android.webkit.WebResourceError,
-                                ) {
-                                    if (request.isForMainFrame) loadFailed = true
-                                }
-                            }
-                            loadUrl(url, topicReferer?.let { mapOf("Referer" to it) } ?: emptyMap())
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(520.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.Default.Apps,
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+                tint = nc.primary
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = appName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = nc.onSurface
+                )
+                Text(
+                    text = "点击打开小程序",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = nc.onSurfaceVariant
                 )
             }
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = nc.onSurfaceVariant
+            )
         }
     }
 }
@@ -420,7 +492,7 @@ private fun DetailsBlock(
     val nc = MaterialTheme.colorScheme
     var expanded by remember(node) { mutableStateOf(node.hasAttr("open")) }
     val summary = remember(node) {
-        node.selectFirst(":scope > summary")?.text()?.trim().takeUnless { it.isNullOrBlank() } ?: "显示隐藏内容"
+        node.children().firstOrNull { it.tagName() == "summary" }?.text()?.trim().takeUnless { it.isNullOrBlank() } ?: "显示隐藏内容"
     }
     Surface(
         shape = RoundedCornerShape(10.dp),

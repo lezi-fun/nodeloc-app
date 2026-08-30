@@ -728,4 +728,49 @@ object DiscourseApi {
         }
     }
 
+    /**
+     * MessageBus 长轮询
+     * @param clientId 客户端唯一 ID (UUID 格式，无连字符)
+     * @param params 订阅参数，格式: "%2Flatest=123&%2Fdelete=456&__seq=1"
+     * @return 收到的消息列表，无新消息时返回空列表
+     */
+    suspend fun messageBusPoll(clientId: String, params: String): List<MessageBusMessage> {
+        val (code, body) = postForm(
+            "/message-bus/$clientId/poll",
+            FormBody.Builder().apply {
+                // 解析参数并逐个添加
+                params.split("&").forEach { part ->
+                    val (key, value) = part.split("=", limit = 2)
+                    add(key, value)
+                }
+            }.build()
+        )
+
+        // 429 限流错误，需要等待
+        if (code == 429) {
+            throw MessageBusRateLimitException()
+        }
+
+        // 其他错误，返回空列表
+        if (code !in 200..299) {
+            return emptyList()
+        }
+
+        // 空响应表示无新消息
+        if (body.isNullOrBlank()) {
+            return emptyList()
+        }
+
+        // 解析消息列表
+        return try {
+            json.decodeFromString<List<MessageBusMessage>>(body)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 }
+
+/**
+ * MessageBus 限流异常
+ */
+class MessageBusRateLimitException : Exception("MessageBus rate limit exceeded")

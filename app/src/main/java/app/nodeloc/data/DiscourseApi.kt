@@ -599,7 +599,7 @@ object DiscourseApi {
      * 在话题下发布回复(顶层)。需要登录态;失败时抛 [ApiException],
      * message 为服务端文案(如频率限制、无权限)。
      */
-    suspend fun createPost(topicId: Long, raw: String, replyToPostNumber: Int? = null) {
+    suspend fun createPost(topicId: Long, raw: String, replyToPostNumber: Int? = null): PostDto {
         val form = FormBody.Builder()
             .add("topic_id", topicId.toString())
             .add("raw", raw)
@@ -612,6 +612,7 @@ object DiscourseApi {
         if (code !in 200..299 || body == null) throw httpError(code, body)
         // 发帖成功后旧 CSRF 已消费,置空待下次重取
         SessionStore.csrfToken = null
+        return json.decodeFromString<PostDto>(body)
     }
 
     /** 发布新话题(POST /posts 同一端点,带 title+category 即视为创建新话题)。返回新话题 id,用于跳转详情页。 */

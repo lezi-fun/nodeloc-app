@@ -173,11 +173,21 @@ fun TopicDetailScreen(
         replyError = null
         scope.launch {
             runCatching { DiscourseApi.createPost(args.id, text, replyToPostNumber.takeIf { it > 0 }) }
-                .onSuccess {
+                .onSuccess { newPost ->
                     replyField = TextFieldValue("")
                     replyToPostNumber = 0
-                    // 刷新楼层以显示新回复;保留登录态避免输入栏闪烁
-                    reloadToken++
+                    // 本地添加新回复，避免整页刷新
+                    posts = posts + newPost
+                    streamIds = streamIds + newPost.id
+                    // 在嵌套模式下，如果回复了某个楼层，需要更新其子回复列表
+                    if ((state as? DetailState.Ready)?.nested == true && replyToPostNumber > 0) {
+                        val parentPost = posts.find { it.postNumber == replyToPostNumber }
+                        parentPost?.let { parent ->
+                            if (parent.id in expandedPosts) {
+                                childrenByPost = childrenByPost + (parent.id to (childrenByPost[parent.id].orEmpty() + newPost))
+                            }
+                        }
+                    }
                 }
                 .onFailure { replyError = it.message ?: "发送失败，请稍后再试" }
             sending = false

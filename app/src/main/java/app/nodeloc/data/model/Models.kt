@@ -68,6 +68,17 @@ data class CustomEmojiDto(
     val tonable: Boolean = false,
 )
 
+@Serializable
+data class AuthProviderDto(
+    val name: String = "",
+    @SerialName("pretty_name_override") val prettyName: String? = null,
+    @SerialName("title_override") val title: String? = null,
+    @SerialName("frame_width") val frameWidth: Int? = null,
+    @SerialName("frame_height") val frameHeight: Int? = null,
+    @SerialName("can_connect") val canConnect: Boolean? = null,
+    @SerialName("can_revoke") val canRevoke: Boolean? = null,
+)
+
 /** /session/current.json 与登录成功返回的当前用户 */
 @Serializable
 data class CurrentUserDto(

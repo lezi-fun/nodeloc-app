@@ -629,6 +629,19 @@ object DiscourseApi {
         return json.decodeFromString(CreatedPostDto.serializer(), body).topicId
     }
 
+    /** 发送私信（创建私密话题）。archetype=private_message 标记为私信，target_usernames 指定收件人。 */
+    suspend fun sendPrivateMessage(recipientUsername: String, title: String, raw: String) {
+        val form = FormBody.Builder()
+            .add("title", title)
+            .add("raw", raw)
+            .add("archetype", "private_message")
+            .add("target_usernames", recipientUsername)
+        addMobileSourceFields(form)
+        val (code, body) = postForm("/posts", form.build())
+        if (code !in 200..299 || body == null) throw httpError(code, body)
+        SessionStore.csrfToken = null
+    }
+
     /** 获取当前用户的发帖来源显示级别设置 */
     suspend fun getPostSourceLevel(): Int = withContext(Dispatchers.IO) {
         val url = (BASE + "/mobile/preferences/post_source").toHttpUrl()

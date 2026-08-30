@@ -57,6 +57,7 @@ fun AppRoot() {
                 onClose = { scope.launch { drawerState.close() } },
                 onOpenLogin = { loginOpen = true },
                 onOpenTopicId = { id -> detailJson = DetailArgs(id, "", 0, false).toJson() },
+                onOpenProfile = { username -> profileUsername = username },
             )
         },
     ) {

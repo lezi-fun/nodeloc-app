@@ -62,7 +62,7 @@ private val topicIdInUrl = Regex("""/t/[^/]+/(\d+)""")
  * 没有自定义标签时回退到站点默认(有图标的节点 / 站点热门标签)。
  */
 @Composable
-fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopicId: (Long) -> Unit = {}) {
+fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopicId: (Long) -> Unit = {}, onOpenProfile: (String) -> Unit = {}) {
     val nc = LocalNodelocColors.current
     // svg 解码由全局 ImageLoader(NodelocApp)提供
     var nodes by remember { mutableStateOf<List<CategoryDto>>(emptyList()) }
@@ -147,7 +147,10 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopic
                         }
                     },
                     selected = false,
-                    onClick = { showLogout = true },
+                    onClick = {
+                        scope.launch { onClose() }
+                        onOpenProfile(user.username)
+                    },
                     icon = {
                         Avatar(user.username, SiteRepo.avatarUrl(user.avatarTemplate), size = 36.dp)
                     },

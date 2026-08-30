@@ -112,6 +112,7 @@ private fun AppRootContent() {
             searchOpen -> SearchScreen(
                 onBack = { searchOpen = false },
                 onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() },
+                onOpenProfile = { username -> profileUsername = username },
             )
             loginOpen -> LoginScreen(onBack = { loginOpen = false })
             createTopicOpen -> CreateTopicScreen(

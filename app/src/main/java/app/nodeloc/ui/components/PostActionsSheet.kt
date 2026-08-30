@@ -279,7 +279,7 @@ fun PostActionsSheet(
                 icon = Icons.Filled.ContentCopy,
                 label = "复制 Markdown",
                 onClick = {
-                    clipboard.setText(AnnotatedString(post.raw))
+                    clipboard.setText(AnnotatedString(post.raw.orEmpty()))
                     Toast.makeText(context, "已复制 Markdown 内容", Toast.LENGTH_SHORT).show()
                     onDismiss()
                 },

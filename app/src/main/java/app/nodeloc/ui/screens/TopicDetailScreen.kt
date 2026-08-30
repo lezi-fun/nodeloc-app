@@ -116,6 +116,21 @@ fun TopicDetailScreen(
     var loadingMore by remember(args.id) { mutableStateOf(false) }
     var loadError by remember(args.id) { mutableStateOf<String?>(null) }
     var reloadToken by remember(args.id) { mutableIntStateOf(0) }
+
+    // MessageBus: 订阅该话题的实时更新
+    val messageBus = app.nodeloc.data.LocalMessageBus.current
+    DisposableEffect(args.id) {
+        val channel = "/topic/${args.id}"
+        messageBus?.subscribe(channel) { msg ->
+            // 收到话题更新消息时触发重新加载
+            reloadToken++
+        }
+
+        onDispose {
+            messageBus?.unsubscribe(channel)
+        }
+    }
+
     // 称号动效样式表:全站共用,进程内已缓存,这里只是拿一份引用给各楼层匹配称号颜色
     var badgeStyles by remember { mutableStateOf<List<app.nodeloc.data.model.BadgeStyleDto>>(emptyList()) }
     LaunchedEffect(Unit) {

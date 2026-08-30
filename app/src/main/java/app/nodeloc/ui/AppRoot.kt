@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.nodeloc.AuthCallbackHandler
+import app.nodeloc.data.ProvideMessageBus
 import app.nodeloc.data.SessionRepo
 import app.nodeloc.data.model.TopicDto
 import app.nodeloc.ui.components.NodeLocDrawer
@@ -31,6 +32,13 @@ import kotlinx.serialization.json.jsonPrimitive
 
 @Composable
 fun AppRoot() {
+    ProvideMessageBus {
+        AppRootContent()
+    }
+}
+
+@Composable
+private fun AppRootContent() {
     var detailJson by rememberSaveable { mutableStateOf<String?>(null) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var loginOpen by rememberSaveable { mutableStateOf(false) }

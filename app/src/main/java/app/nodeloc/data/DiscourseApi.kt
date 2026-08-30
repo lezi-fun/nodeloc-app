@@ -603,6 +603,8 @@ object DiscourseApi {
         if (replyToPostNumber != null && replyToPostNumber > 0) {
             form.add("reply_to_post_number", replyToPostNumber.toString())
         }
+        // 根据 post_source level 添加设备信息字段
+        addMobileSourceFields(form)
         val (code, body) = postForm("/posts", form.build())
         if (code !in 200..299 || body == null) throw httpError(code, body)
         // 发帖成功后旧 CSRF 已消费,置空待下次重取
@@ -615,8 +617,9 @@ object DiscourseApi {
             .add("title", title)
             .add("raw", raw)
             .add("category", categoryId.toString())
-            .build()
-        val (code, body) = postForm("/posts", form)
+        // 根据 post_source level 添加设备信息字段
+        addMobileSourceFields(form)
+        val (code, body) = postForm("/posts", form.build())
         if (code !in 200..299 || body == null) throw httpError(code, body)
         SessionStore.csrfToken = null
         return json.decodeFromString(CreatedPostDto.serializer(), body).topicId
@@ -652,6 +655,77 @@ object DiscourseApi {
             delete()
         }
         if (code !in 200..299) throw httpError(code, body)
+    }
+
+    /**
+     * 根据用户设置的 post_source level 添加移动设备来源字段。
+     * 与官方 APP 保持一致：
+     * - Level 1+: 添加 mobile_source_platform=android
+     * - Level 3+: 添加 mobile_source_brand（品牌）
+     * - Level 4+: 添加 mobile_source_model（型号）
+     */
+    private suspend fun addMobileSourceFields(formBuilder: FormBody.Builder) {
+        val level = runCatching { getPostSourceLevel() }.getOrElse { 0 }
+
+        if (level >= 1) {
+            formBuilder.add("mobile_source_platform", "android")
+        }
+
+        if (level >= 3) {
+            val brand = getDeviceBrand()
+            if (brand.isNotEmpty()) {
+                formBuilder.add("mobile_source_brand", brand)
+            }
+        }
+
+        if (level >= 4) {
+            val model = Build.MODEL.trim()
+            if (model.isNotEmpty()) {
+                formBuilder.add("mobile_source_model", model)
+            }
+        }
+    }
+
+    /**
+     * 获取设备品牌，优先使用特定品牌子系列（如 iQOO、Redmi 等），
+     * 否则使用 Build.MANUFACTURER
+     */
+    private fun getDeviceBrand(): String {
+        // 特定子品牌列表（与官方 APP 一致）
+        val subBrands = setOf("iqoo", "redmi", "poco", "realme", "honor", "nothing")
+
+        // 尝试从系统属性获取市场名称
+        val marketName = getSystemProperty("ro.vivo.market.name")
+            ?: getSystemProperty("ro.product.marketname")
+            ?: getSystemProperty("ro.config.marketing_name")
+            ?: getSystemProperty("ro.vendor.oplus.market.name")
+            ?: getSystemProperty("ro.oppo.market.name")
+            ?: getSystemProperty("ro.product.vendor.marketname")
+
+        // 如果市场名称是子品牌，使用它
+        if (marketName != null) {
+            val normalized = marketName.trim().replace(" ", "").lowercase()
+            if (normalized in subBrands) {
+                return normalized
+            }
+        }
+
+        // 否则使用 Build.MANUFACTURER
+        return Build.MANUFACTURER.trim()
+    }
+
+    /**
+     * 获取系统属性值（通过反射调用 android.os.SystemProperties.get）
+     */
+    private fun getSystemProperty(key: String): String? {
+        return try {
+            val clazz = Class.forName("android.os.SystemProperties")
+            val method = clazz.getMethod("get", String::class.java)
+            val value = method.invoke(null, key) as? String
+            value?.takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            null
+        }
     }
 
 }

@@ -12,9 +12,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.nodeloc.AuthCallbackHandler
+import app.nodeloc.data.AppUpdateManager
 import app.nodeloc.data.ProvideMessageBus
 import app.nodeloc.data.SessionRepo
 import app.nodeloc.data.model.TopicDto
+import app.nodeloc.ui.components.AppUpdateDialog
 import app.nodeloc.ui.components.NodeLocDrawer
 import app.nodeloc.ui.screens.CreateTopicScreen
 import app.nodeloc.ui.screens.LoginScreen
@@ -127,6 +129,26 @@ private fun AppRootContent() {
                 onOpenCreateTopic = { createTopicOpen = true },
             )
         }
+    }
+
+    // 应用更新对话框
+    if (AppUpdateManager.showUpdateDialog) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        AppUpdateDialog(
+            onDismiss = {
+                AppUpdateManager.dismissDialog()
+            },
+            onUpdate = {
+                AppUpdateManager.dismissDialog()
+                // 下载并安装 APK
+                app.nodeloc.data.ApkDownloadManager.downloadAndInstall(
+                    context = context,
+                    downloadUrl = AppUpdateManager.apkDownloadUrl,
+                    version = AppUpdateManager.newVersion
+                )
+            },
+            message = AppUpdateManager.updateMessage,
+        )
     }
 }
 

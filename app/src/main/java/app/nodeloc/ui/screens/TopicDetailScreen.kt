@@ -100,7 +100,7 @@ fun TopicDetailScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     var state by remember(args.id) { mutableStateOf<DetailState>(DetailState.Loading) }
-    var loggedIn by remember(args.id) { mutableStateOf(false) }
+    var loggedIn by remember(args.id) { mutableStateOf<Boolean?>(null) }
     var posts by remember(args.id) { mutableStateOf<List<PostDto>>(emptyList()) }
     var streamIds by remember(args.id) { mutableStateOf<List<Long>>(emptyList()) }
     var opPost by remember(args.id) { mutableStateOf<PostDto?>(null) }
@@ -342,7 +342,7 @@ fun TopicDetailScreen(
     val postNumberById = remember(displayPosts) { displayPosts.associate { it.post.id to it.post.postNumber } }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(args.id, loggedIn) {
-        if (!loggedIn) return@DisposableEffect onDispose {}
+        if (loggedIn != true) return@DisposableEffect onDispose {}
         val tracker = TopicScreenTracker(args.id)
         var tickJob: Job? = null
 
@@ -513,7 +513,7 @@ fun TopicDetailScreen(
                         childrenByPost[post.id].orEmpty().isNotEmpty()
                     PostItem(
                         item, current.nested, post.id in expandedPosts, hasDescendants,
-                        post.id in childLoading, childHasMore[post.id] == true, loggedIn,
+                        post.id in childLoading, childHasMore[post.id] == true, loggedIn == true,
                         { toggleChildren(item) }, { loadMoreChildren(item) },
                         onReactionUpdated = ::updatePost,
                         onOpenProfile = onOpenProfile,
@@ -545,7 +545,8 @@ fun TopicDetailScreen(
             shadowElevation = 0.dp,
             modifier = Modifier.navigationBarsPadding().imePadding(),
         ) {
-            if (loggedIn) {
+            when (loggedIn) {
+                true -> {
                 Column(Modifier.fillMaxWidth()) {
                     replyError?.let { msg ->
                         Text(
@@ -666,26 +667,30 @@ fun TopicDetailScreen(
                         )
                     }
                 }
-            } else {
-                // 未登录:整条回复栏作为登录引导
-                Surface(
-                    onClick = onOpenLogin,
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                false -> {
+                    // 未登录:整条回复栏作为登录引导
+                    Surface(
+                        onClick = onOpenLogin,
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Icon(Icons.Filled.Lock, null, tint = nc.primary, modifier = Modifier.size(15.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "登录后即可回复",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = nc.primary,
-                        )
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Filled.Lock, null, tint = nc.primary, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "登录后即可回复",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = nc.primary,
+                            )
+                        }
                     }
+                }
+                null -> {
+                    // 登录状态检查中，不显示任何内容避免闪烁
                 }
             }
         }

@@ -9,8 +9,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,6 +27,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import app.nodeloc.data.DiscourseApi
 import app.nodeloc.data.model.PostDto
@@ -79,10 +84,12 @@ fun ReactionButton(post: PostDto, canReact: Boolean, onUpdated: (PostDto) -> Uni
             .padding(horizontal = 2.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AsyncImage(
-            model = emojiUrl(current ?: "heart"),
+        // 使用 Material Icons 的爱心图标，未点赞时中空，点赞后实心红色
+        Icon(
+            imageVector = if (current != null) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
             contentDescription = current ?: "点赞",
-            modifier = Modifier.size(15.dp),
+            modifier = Modifier.size(16.dp),
+            tint = if (current != null) Color(0xFFE91E63) else nc.onSurfaceVariant
         )
         val total = post.reactions.sumOf { it.count }
         if (total > 0) {

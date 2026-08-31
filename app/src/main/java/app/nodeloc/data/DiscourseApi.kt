@@ -464,6 +464,18 @@ object DiscourseApi {
 
     suspend fun setPostWiki(postId: Long, wiki: Boolean) = updatePostField(postId, "wiki", wiki)
 
+    /**
+     * 对帖子进行投票（顶或踩）。
+     * @param postId 帖子 ID
+     * @param direction "up" 表示顶，"down" 表示踩
+     */
+    suspend fun votePost(postId: Long, direction: String) {
+        require(direction == "up" || direction == "down") { "direction must be 'up' or 'down'" }
+        val form = FormBody.Builder().add("direction", direction).build()
+        val (code, body) = putForm("/vote/posts/$postId", form)
+        if (code !in 200..299) throw httpError(code, body)
+    }
+
     /** 重新用最新 Markdown 规则渲染楼层 HTML(修 bug 或升级插件后用来批量刷正文渲染结果)。 */
     suspend fun rebakePost(postId: Long) {
         val (code, body) = putForm("/posts/$postId/rebake")

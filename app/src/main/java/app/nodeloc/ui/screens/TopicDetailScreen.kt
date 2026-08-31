@@ -32,6 +32,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
@@ -1019,7 +1024,7 @@ private fun VoteButton(post: PostDto, onUpdated: (PostDto) -> Unit) {
                     )
             ) {
                 Icon(
-                    Icons.Filled.KeyboardArrowUp,
+                    ArrowBigUp,
                     contentDescription = "赞",
                     tint = nc.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
@@ -1060,7 +1065,7 @@ private fun VoteButton(post: PostDto, onUpdated: (PostDto) -> Unit) {
                     )
             ) {
                 Icon(
-                    Icons.Filled.KeyboardArrowDown,
+                    ArrowBigDown,
                     contentDescription = "踩",
                     tint = nc.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
@@ -1136,3 +1141,77 @@ private fun VoteEmojiMenu(
         }
     }
 }
+
+/**
+ * 粗箭头向上图标（与官网一致）
+ * 基于官网 SVG: arrow-big-up
+ */
+private val ArrowBigUp: ImageVector
+    get() = ImageVector.Builder(
+        name = "ArrowBigUp",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            // M9 19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6a1 1 0 0 1 1-1h3.293a.707.707 0 0 0 .5-1.207l-7.086-7.086a1 1 0 0 0-1.414 0l-7.086 7.086a.707.707 0 0 0 .5 1.207H8a1 1 0 0 1 1 1z
+            moveTo(9f, 19f)
+            arcTo(1f, 1f, 0f, false, false, 10f, 20f)
+            horizontalLineTo(14f)
+            arcTo(1f, 1f, 0f, false, false, 15f, 19f)
+            verticalLineTo(13f)
+            arcTo(1f, 1f, 0f, false, true, 16f, 12f)
+            horizontalLineTo(19.293f)
+            arcTo(0.707f, 0.707f, 0f, false, false, 19.793f, 10.793f)
+            lineTo(12.707f, 3.707f)
+            arcTo(1f, 1f, 0f, false, false, 11.293f, 3.707f)
+            lineTo(4.207f, 10.793f)
+            arcTo(0.707f, 0.707f, 0f, false, false, 4.707f, 12f)
+            horizontalLineTo(8f)
+            arcTo(1f, 1f, 0f, false, true, 9f, 13f)
+            close()
+        }
+    }.build()
+
+/**
+ * 粗箭头向下图标（与官网一致）
+ * 基于官网 SVG: arrow-big-down
+ */
+private val ArrowBigDown: ImageVector
+    get() = ImageVector.Builder(
+        name = "ArrowBigDown",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            // M9 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 0 1 1h3.293a.707.707 0 0 1 .5 1.207l-7.086 7.086a1 1 0 0 1-1.414 0l-7.086-7.086a.707.707 0 0 1 .5-1.207H8a1 1 0 0 0 1-1z
+            moveTo(9f, 5f)
+            arcTo(1f, 1f, 0f, false, true, 10f, 4f)
+            horizontalLineTo(14f)
+            arcTo(1f, 1f, 0f, false, true, 15f, 5f)
+            verticalLineTo(11f)
+            arcTo(1f, 1f, 0f, false, false, 16f, 12f)
+            horizontalLineTo(19.293f)
+            arcTo(0.707f, 0.707f, 0f, false, true, 19.793f, 13.207f)
+            lineTo(12.707f, 20.293f)
+            arcTo(1f, 1f, 0f, false, true, 11.293f, 20.293f)
+            lineTo(4.207f, 13.207f)
+            arcTo(0.707f, 0.707f, 0f, false, true, 4.707f, 12f)
+            horizontalLineTo(8f)
+            arcTo(1f, 1f, 0f, false, false, 9f, 11f)
+            close()
+        }
+    }.build()

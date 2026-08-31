@@ -20,7 +20,6 @@ import app.nodeloc.data.model.NestedTopicPageDto
 import app.nodeloc.data.model.PostDto
 import app.nodeloc.data.model.PostCookedDto
 import app.nodeloc.data.model.PostEditResponseDto
-import app.nodeloc.data.model.PostPreviewDto
 import app.nodeloc.data.model.PostReplyHistoryDto
 import app.nodeloc.data.model.PostRepliesDto
 import app.nodeloc.data.model.PostsChunkDto
@@ -306,14 +305,6 @@ object DiscourseApi {
         }
         if (code !in 200..299 || body == null) throw httpError(code, body)
         return json.decodeFromString(CheckinResponseDto.serializer(), body)
-    }
-
-    /** 使用 Discourse 的预览端点把 Markdown 转成 cooked HTML。 */
-    suspend fun previewPost(raw: String): PostPreviewDto {
-        val form = FormBody.Builder().add("raw", raw).build()
-        val (code, body) = postForm("/posts/preview.json", form)
-        if (code !in 200..299 || body == null) throw httpError(code, body)
-        return json.decodeFromString(body)
     }
 
     /** 上传编辑器附件,与 Discourse Composer 使用同一 multipart 字段 file。 */

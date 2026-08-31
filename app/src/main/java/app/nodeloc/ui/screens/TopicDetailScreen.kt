@@ -60,6 +60,7 @@ import app.nodeloc.ui.components.GifSearchSheet
 import app.nodeloc.ui.components.LotteryCard
 import app.nodeloc.ui.components.MarkdownAction
 import app.nodeloc.ui.components.MarkdownEditingActions
+import app.nodeloc.ui.components.MarkdownPreview
 import app.nodeloc.ui.components.MarkdownToolbar
 import app.nodeloc.ui.components.PostActionsSheet
 import app.nodeloc.ui.components.ReactionButton
@@ -579,17 +580,10 @@ fun TopicDetailScreen(
                                 MarkdownAction.Gif -> gifSheetOpen = true
                                 MarkdownAction.Emoji -> emojiSheetOpen = true
                                 MarkdownAction.TogglePreview -> {
-                                    if (!previewMode) {
-                                        replyError = null
-                                        scope.launch {
-                                            runCatching { DiscourseApi.previewPost(replyField.text) }
-                                                .onSuccess { previewHtml = it.cooked; previewMode = true }
-                                                .onFailure { replyError = it.message ?: "预览失败，请稍后再试" }
-                                        }
-                                    } else {
-                                        previewMode = false
-                                        replyError = null
-                                    }
+                                    // 预览在本地渲染:官网 composer 也是客户端渲染,服务端没有预览端点
+                                    previewHtml = if (previewMode) "" else MarkdownPreview.toHtml(replyField.text)
+                                    previewMode = !previewMode
+                                    replyError = null
                                 }
                                 MarkdownAction.Attachment -> filePicker.launch("*/*")
                                 else -> replyField = MarkdownEditingActions.apply(action, replyField)

@@ -79,6 +79,12 @@ dependencies {
     implementation("io.coil-kt:coil-gif:2.7.0")
     implementation("androidx.browser:browser:1.8.0")
     implementation("org.jsoup:jsoup:1.18.1")
+    // 官网 composer 的 Markdown 预览是纯客户端渲染(markdown-it),服务端没有预览端点,
+    // 所以本地用 CommonMark 实现同样的规范 + GFM 表格/删除线扩展,渲染结果交给 CookedText。
+    implementation("org.commonmark:commonmark:0.22.0")
+    implementation("org.commonmark:commonmark-ext-gfm-tables:0.22.0")
+    implementation("org.commonmark:commonmark-ext-gfm-strikethrough:0.22.0")
+    implementation("org.commonmark:commonmark-ext-autolink:0.22.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")

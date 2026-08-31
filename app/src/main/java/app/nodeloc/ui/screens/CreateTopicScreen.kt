@@ -52,6 +52,7 @@ import app.nodeloc.ui.components.EmojiPickerSheet
 import app.nodeloc.ui.components.GifSearchSheet
 import app.nodeloc.ui.components.MarkdownAction
 import app.nodeloc.ui.components.MarkdownEditingActions
+import app.nodeloc.ui.components.MarkdownPreview
 import app.nodeloc.ui.components.MarkdownToolbar
 import app.nodeloc.ui.theme.LocalNodelocColors
 import kotlinx.coroutines.launch
@@ -189,23 +190,10 @@ fun CreateTopicScreen(onBack: () -> Unit, onCreated: (Long) -> Unit) {
                     MarkdownAction.Emoji -> emojiSheetOpen = true
                     MarkdownAction.Attachment -> filePicker.launch("*/*")
                     MarkdownAction.TogglePreview -> {
-                        if (!previewMode) {
-                            val text = body.text.trim()
-                            if (text.isEmpty()) {
-                                previewHtml = ""
-                                previewMode = true
-                            } else {
-                                errorMsg = null
-                                scope.launch {
-                                    runCatching { DiscourseApi.previewPost(text) }
-                                        .onSuccess { previewHtml = it.cooked; previewMode = true }
-                                        .onFailure { errorMsg = it.message ?: "预览失败，请稍后再试" }
-                                }
-                            }
-                        } else {
-                            previewMode = false
-                            errorMsg = null
-                        }
+                        // 预览在本地渲染:官网 composer 也是客户端渲染,服务端没有预览端点
+                        previewHtml = if (previewMode) "" else MarkdownPreview.toHtml(body.text)
+                        previewMode = !previewMode
+                        errorMsg = null
                     }
                     else -> body = MarkdownEditingActions.apply(action, body)
                 }

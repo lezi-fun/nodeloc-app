@@ -124,17 +124,10 @@ fun EditPostDialog(post: PostDto, onDismiss: () -> Unit, onEdited: (PostDto) -> 
                         MarkdownAction.Emoji -> emojiSheetOpen = true
                         MarkdownAction.Attachment -> filePicker.launch("*/*")
                         MarkdownAction.TogglePreview -> {
-                            if (!previewMode) {
-                                errorMsg = null
-                                scope.launch {
-                                    runCatching { DiscourseApi.previewPost(body.text) }
-                                        .onSuccess { previewHtml = it.cooked; previewMode = true }
-                                        .onFailure { errorMsg = it.message ?: "预览失败，请稍后再试" }
-                                }
-                            } else {
-                                previewMode = false
-                                errorMsg = null
-                            }
+                            // 预览在本地渲染:官网 composer 也是客户端渲染,服务端没有预览端点
+                            previewHtml = if (previewMode) "" else MarkdownPreview.toHtml(body.text)
+                            previewMode = !previewMode
+                            errorMsg = null
                         }
                         else -> body = MarkdownEditingActions.apply(action, body)
                     }

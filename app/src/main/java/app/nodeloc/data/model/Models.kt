@@ -136,10 +136,6 @@ data class SessionResponseDto(
     @SerialName("second_factor_method") val secondFactorMethod: Int? = null,
 )
 
-/** POST /posts/preview.json 响应。 */
-@Serializable
-data class PostPreviewDto(val cooked: String = "")
-
 /** POST /uploads.json 响应;短链接优先用于 Markdown 插入。 */
 @Serializable
 data class UploadResponseDto(

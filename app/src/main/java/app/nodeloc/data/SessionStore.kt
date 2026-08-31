@@ -34,6 +34,25 @@ object SessionStore {
             prefs.edit().putString(KEY_T, value).apply()
         }
 
+    /**
+     * 接管 WebView 的会话 cookie(第三方登录走完后调用)。
+     * 入参是 CookieManager.getCookie() 的 "k=v; k=v" 格式,只取会话相关的两个。
+     */
+    fun adoptCookieHeader(cookieHeader: String) {
+        cookieHeader.split(';').forEach { part ->
+            val idx = part.indexOf('=')
+            if (idx <= 0) return@forEach
+            val name = part.substring(0, idx).trim()
+            val value = part.substring(idx + 1).trim().takeIf { it.isNotBlank() } ?: return@forEach
+            when (name) {
+                "_t" -> tCookie = value
+                "_forum_session" -> sessionCookie = value
+            }
+        }
+        // 会话已换人,旧 CSRF 失效
+        csrfToken = null
+    }
+
     fun cachedUserJson(): String? =
         if (::prefs.isInitialized) prefs.getString(KEY_USER, null) else null
 

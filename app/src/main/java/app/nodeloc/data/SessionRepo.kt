@@ -43,8 +43,15 @@ object SessionRepo {
         return user
     }
 
-    suspend fun loginWithPayload(payload: String): CurrentUserDto {
-        val user = DiscourseApi.loginWithPayload(payload)
+    /**
+     * 第三方登录收尾:WebView 走完 /auth/{provider}/callback 后,会话已在服务端建立,
+     * 把 WebView 拿到的 cookie 同步给 OkHttp,再拉一次当前用户确认登录状态。
+     *
+     * @param cookieHeader CookieManager.getCookie() 返回的 "k=v; k=v" 串
+     */
+    suspend fun adoptWebViewSession(cookieHeader: String): CurrentUserDto {
+        SessionStore.adoptCookieHeader(cookieHeader)
+        val user = DiscourseApi.currentUser() ?: throw ApiException(0, message = "第三方登录未能建立会话，请重试")
         _currentUser.value = user
         SessionStore.cacheUser(json.encodeToString(CurrentUserDto.serializer(), user))
         return user

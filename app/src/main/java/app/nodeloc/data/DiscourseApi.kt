@@ -250,22 +250,6 @@ object DiscourseApi {
     }
 
     /** 使用第三方 OAuth 返回的 payload 完成登录 */
-    suspend fun loginWithPayload(payload: String): CurrentUserDto = withContext(Dispatchers.IO) {
-        val form = FormBody.Builder().add("payload", payload).build()
-        val (code, body) = postForm("/session/current_user_confirm_session", form)
-        if (code !in 200..299 || body == null) throw httpError(code, body)
-        val r = json.decodeFromString(SessionResponseDto.serializer(), body)
-        when {
-            r.error != null -> throw ApiException(0, message = r.error)
-            r.user != null -> {
-                // 会话已切换,旧 CSRF 失效
-                SessionStore.csrfToken = null
-                r.user
-            }
-            else -> throw ApiException(0, message = "第三方登录失败,请稍后再试")
-        }
-    }
-
     /** 退出登录并清空本地会话 */
     suspend fun logout(username: String) {
         val (code, body) = postForm("/session/" + username + "/logout", FormBody.Builder().build())

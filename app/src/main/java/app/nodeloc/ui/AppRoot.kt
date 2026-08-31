@@ -5,13 +5,11 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import app.nodeloc.AuthCallbackHandler
 import app.nodeloc.data.AppUpdateManager
 import app.nodeloc.data.ProvideMessageBus
 import app.nodeloc.data.SessionRepo
@@ -49,20 +47,6 @@ private fun AppRootContent() {
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-
-    // 注册 OAuth 回调处理
-    DisposableEffect(Unit) {
-        AuthCallbackHandler.setCallback { payload ->
-            scope.launch {
-                runCatching { SessionRepo.loginWithPayload(payload) }
-                    .onSuccess { loginOpen = false }
-                    .onFailure { /* 静默失败，用户可以重试 */ }
-            }
-        }
-        onDispose {
-            AuthCallbackHandler.clearCallback()
-        }
-    }
 
     BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
     BackHandler(enabled = profileUsername != null && !drawerState.isOpen) { profileUsername = null }

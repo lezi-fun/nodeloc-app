@@ -1,8 +1,5 @@
 package app.nodeloc.ui.screens
 
-import android.content.Context
-import android.net.Uri
-import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -49,11 +46,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import app.nodeloc.R
 import app.nodeloc.data.ApiException
-import app.nodeloc.data.DiscourseApi
 import app.nodeloc.data.SecondFactorRequiredException
 import app.nodeloc.data.SessionRepo
 import app.nodeloc.data.model.AuthProviderDto
 import app.nodeloc.ui.components.LoadingMark
+import app.nodeloc.ui.components.OAuthLoginDialog
 import app.nodeloc.ui.theme.LocalNodelocColors
 import kotlinx.coroutines.launch
 
@@ -69,6 +66,8 @@ fun LoginScreen(onBack: () -> Unit) {
     var secondFactorToken by rememberSaveable { mutableStateOf<String?>(null) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    // 非空表示正在用该提供商走应用内 OAuth
+    var oauthProvider by remember { mutableStateOf<AuthProviderDto?>(null) }
 
     // 第三方登录提供商（硬编码，因为 API 端点需要权限）
     val authProviders = remember {
@@ -208,10 +207,10 @@ fun LoginScreen(onBack: () -> Unit) {
                     Box(Modifier.weight(1f).height(1.dp).background(nc.outlineVariant))
                 }
 
-                // 第三方登录按钮
+                // 第三方登录按钮:在应用内 WebView 里完成授权,不跳外部浏览器
                 authProviders.forEach { provider ->
                     OutlinedButton(
-                        onClick = { openAuthProvider(context, provider.name) },
+                        onClick = { oauthProvider = provider },
                         shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = nc.primary),
                         modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -223,6 +222,25 @@ fun LoginScreen(onBack: () -> Unit) {
             }
         }
     }
+
+    oauthProvider?.let { provider ->
+        OAuthLoginDialog(
+            providerName = provider.name,
+            providerLabel = provider.prettyName ?: provider.title ?: provider.name,
+            onDismiss = { oauthProvider = null },
+            onAuthenticated = { cookieHeader ->
+                oauthProvider = null
+                busy = true
+                error = null
+                scope.launch {
+                    runCatching { SessionRepo.adoptWebViewSession(cookieHeader) }
+                        .onSuccess { onBack() }
+                        .onFailure { error = it.message ?: "第三方登录失败，请重试" }
+                    busy = false
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -233,10 +251,3 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     focusedLabelColor = LocalNodelocColors.current.primary,
 )
 
-private fun openAuthProvider(context: Context, providerName: String) {
-    val authUrl = "${DiscourseApi.BASE}/auth/$providerName?origin=${DiscourseApi.BASE}"
-    val customTabsIntent = CustomTabsIntent.Builder()
-        .setShowTitle(true)
-        .build()
-    customTabsIntent.launchUrl(context, Uri.parse(authUrl))
-}

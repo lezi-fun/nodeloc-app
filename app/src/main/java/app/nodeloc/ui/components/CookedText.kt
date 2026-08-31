@@ -1,5 +1,7 @@
 package app.nodeloc.ui.components
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import android.webkit.CookieManager
 import android.webkit.WebSettings
@@ -531,41 +534,117 @@ private fun DetailsBlock(
     }
 }
 
+/**
+ * 外链 onebox 卡片,对齐官网 cooked 的真实结构:
+ *
+ *   <aside class="onebox allowlistedgeneric" data-onebox-src="…">
+ *     <header class="source"><a href="…">example.com</a></header>
+ *     <article class="onebox-body">
+ *       <div class="aspect-image" style="--aspect-ratio:690/361"><img class="thumbnail" …></div>
+ *       <h3><a href="…">标题</a></h3>
+ *       <p>描述</p>
+ *     </article>
+ *   </aside>
+ *
+ * 官网视觉要点:左侧一条 3px 的强调色竖线、header 用小字显示来源域名、
+ * 缩略图按 --aspect-ratio 铺满卡片宽度(不是小方图)、描述最多 2 行。
+ */
 @Composable
 private fun OneboxBlock(node: Element, onOpenUrl: (String) -> Unit) {
     val nc = MaterialTheme.colorScheme
-    val link = node.selectFirst("a[href]") ?: node.closest("a[href]")
-    val href = link?.absUrl("href")?.takeIf { it.isNotBlank() }
+    val body = node.selectFirst("article.onebox-body") ?: node
+    // 标题链接优先取 h3/h4 里的 a,它才是目标页面地址
+    val titleLink = body.selectFirst("h3 > a[href], h4 > a[href]")
+    val href = titleLink?.absUrl("href")?.takeIf { it.isNotBlank() }
         ?: node.attr("data-onebox-src").takeIf { it.isNotBlank() }
+        ?: node.selectFirst("header.source a[href]")?.absUrl("href")?.takeIf { it.isNotBlank() }
+        ?: node.selectFirst("a[href]")?.absUrl("href")?.takeIf { it.isNotBlank() }
         ?: return
-    val title = node.selectFirst(".onebox-body h3, .onebox-body h4, h3, h4, .title")?.text()?.trim()
-        .takeUnless { it.isNullOrBlank() } ?: href.removePrefix("https://").removePrefix("http://")
-    val description = node.selectFirst(".description, .onebox-body p, .excerpt")?.text()?.trim()
-    val image = node.selectFirst("img[src]")?.let { resolveUrl(it.attr("src")) }
+    // header.source 里就是官网显示的来源域名,没有则从 href 退化解析
+    val source = node.selectFirst("header.source a")?.text()?.trim()
+        ?.takeIf { it.isNotBlank() } ?: hostOf(href)
+    val title = titleLink?.text()?.trim()?.takeIf { it.isNotBlank() }
+        ?: body.selectFirst("h3, h4, .title")?.text()?.trim()?.takeIf { it.isNotBlank() }
+        ?: source
+    val description = body.selectFirst("p")?.text()?.trim()?.takeIf { it.isNotBlank() }
+    // .aspect-image 的 --aspect-ratio 决定缩略图比例,官网按此铺满宽度
+    val thumb = body.selectFirst("img.thumbnail[src], .aspect-image img[src], img[src]")
+    val thumbUrl = thumb?.let { resolveUrl(it.attr("src")) }
+    val aspect = thumb?.let { img ->
+        val w = img.attr("width").toFloatOrNull()
+        val h = img.attr("height").toFloatOrNull()
+        if (w != null && h != null && h > 0f) w / h else null
+    } ?: aspectRatioOf(body.selectFirst(".aspect-image")?.attr("style"))
+
     Surface(
         onClick = { onOpenUrl(href) },
-        shape = RoundedCornerShape(12.dp),
-        color = nc.surfaceVariant.copy(alpha = 0.65f),
+        shape = RoundedCornerShape(8.dp),
+        color = nc.surface,
+        border = BorderStroke(1.dp, nc.outlineVariant),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (image != null) {
-                AsyncImage(
-                    model = image,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop,
+        Row(Modifier.fillMaxWidth()) {
+            // 官网 .onebox 的左侧强调竖线
+            Box(Modifier.width(3.dp).fillMaxHeight().background(nc.primary))
+            Column(Modifier.weight(1f).padding(12.dp)) {
+                Text(
+                    source,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = nc.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.width(10.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = nc.onSurface, maxLines = 2)
-                Text(href.removePrefix("https://").removePrefix("http://"), style = MaterialTheme.typography.labelSmall, color = nc.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (!description.isNullOrBlank()) Text(description, style = MaterialTheme.typography.bodySmall, color = nc.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                if (thumbUrl != null) {
+                    Spacer(Modifier.height(8.dp))
+                    AsyncImage(
+                        model = thumbUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(aspect ?: (16f / 9f))
+                            .clip(RoundedCornerShape(4.dp)),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = nc.primary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (description != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = nc.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
 }
+
+/** 从 style="--aspect-ratio:690/361" 解析宽高比 */
+private fun aspectRatioOf(style: String?): Float? {
+    val raw = style ?: return null
+    val m = Regex("--aspect-ratio:\\s*([0-9.]+)\\s*/\\s*([0-9.]+)").find(raw) ?: return null
+    val w = m.groupValues[1].toFloatOrNull() ?: return null
+    val h = m.groupValues[2].toFloatOrNull() ?: return null
+    return if (h > 0f) w / h else null
+}
+
+/** 取 URL 的主机名,作为 header.source 缺失时的来源显示 */
+private fun hostOf(url: String): String =
+    runCatching { android.net.Uri.parse(url).host.orEmpty() }.getOrNull()
+        ?.removePrefix("www.")
+        ?.takeIf { it.isNotBlank() }
+        ?: url.removePrefix("https://").removePrefix("http://").takeWhile { it != '/' }
 @Composable
 private fun LinkBlock(node: Element, onOpenUrl: (String) -> Unit) {
     val nc = MaterialTheme.colorScheme
@@ -592,6 +671,13 @@ private fun LinkBlock(node: Element, onOpenUrl: (String) -> Unit) {
 @Composable
 private fun QuoteBlock(node: Element, topicReferer: String?, onPreview: (String) -> Unit, onOpenUrl: (String) -> Unit) {
     val nc = MaterialTheme.colorScheme
+    // 站内话题引用:官网 cooked 里是 <aside class="quote" data-topic="…">,
+    // 标题行由头像 + 话题链接 + 分类徽章组成,和外链 onebox 完全不同的形态
+    val titleEl = node.selectFirst("div.title")
+    if (node.hasAttr("data-topic") && titleEl != null) {
+        InternalTopicQuote(node, titleEl, topicReferer, onPreview, onOpenUrl)
+        return
+    }
     val title = node.selectFirst(".title")?.text()?.trim()
     Surface(shape = RoundedCornerShape(12.dp), color = nc.surfaceVariant) {
         Column(Modifier.fillMaxWidth().padding(10.dp)) {
@@ -606,6 +692,136 @@ private fun QuoteBlock(node: Element, topicReferer: String?, onPreview: (String)
             }
         }
     }
+}
+
+/**
+ * 站内话题引用卡片,对齐官网 cooked 的真实结构:
+ *
+ *   <aside class="quote" data-topic="105934" data-repost-category="218">
+ *     <div class="title">
+ *       <img class="avatar" src="…" width="24" height="24">
+ *       <div class="quote-title__text-content">
+ *         <a href="/t/topic/105934">话题标题</a>
+ *         <a class="badge-category__wrapper" …>
+ *           <span class="badge-category" style="--category-badge-color:#F7941D; …">
+ *             <span class="badge-category__name">分类名</span>
+ *           </span>
+ *         </a>
+ *       </div>
+ *     </div>
+ *     <blockquote>摘要…</blockquote>
+ *   </aside>
+ *
+ * 与外链 onebox 的差别:标题行带 24px 头像,分类徽章用 --category-badge-color 上色,
+ * 正文是 blockquote 摘要。整卡可点,跳到被引用的话题。
+ */
+@Composable
+private fun InternalTopicQuote(
+    node: Element,
+    titleEl: Element,
+    topicReferer: String?,
+    onPreview: (String) -> Unit,
+    onOpenUrl: (String) -> Unit,
+) {
+    val nc = MaterialTheme.colorScheme
+    val topicLink = titleEl.selectFirst(".quote-title__text-content > a[href], a[href]:not(.badge-category__wrapper)")
+    val href = topicLink?.absUrl("href")?.takeIf { it.isNotBlank() }
+    val title = topicLink?.text()?.trim()?.takeIf { it.isNotBlank() }
+    val avatar = titleEl.selectFirst("img.avatar[src]")?.let { resolveUrl(it.attr("src")) }
+    val badge = titleEl.selectFirst("span.badge-category")
+    val badgeName = badge?.selectFirst(".badge-category__name")?.text()?.trim()
+        ?: badge?.text()?.trim()
+    val badgeColor = cssVarColor(badge?.attr("style"), "--category-badge-color")
+    val badgeTextColor = cssVarColor(badge?.attr("style"), "--category-badge-text-color")
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = nc.surface,
+        border = BorderStroke(1.dp, nc.outlineVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            // 标题行:官网 .title 有独立的浅色底并与正文用细线分隔
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(nc.surfaceVariant.copy(alpha = 0.5f))
+                    .then(if (href != null) Modifier.clickable { onOpenUrl(href) } else Modifier)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (avatar != null) {
+                    AsyncImage(
+                        model = avatar,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp).clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (title != null) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = nc.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
+                if (!badgeName.isNullOrBlank()) {
+                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        Modifier
+                            .background(badgeColor ?: nc.secondaryContainer, RoundedCornerShape(2.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            badgeName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = badgeTextColor ?: nc.onSecondaryContainer,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+            HorizontalDividerThin()
+            Column(Modifier.fillMaxWidth().padding(10.dp)) {
+                node.childNodes().forEach { child ->
+                    if (child is Element && child.hasClass("title")) return@forEach
+                    RenderBlock(child, topicReferer, onPreview, onOpenUrl)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HorizontalDividerThin() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant),
+    )
+}
+
+/** 解析官网内联 style 里的 CSS 变量颜色,如 --category-badge-color: #F7941D */
+private fun cssVarColor(style: String?, name: String): Color? {
+    val raw = style ?: return null
+    val m = Regex("$name:\\s*#([0-9a-fA-F]{3,8})").find(raw) ?: return null
+    val hex = m.groupValues[1]
+    val full = when (hex.length) {
+        3 -> hex.map { "$it$it" }.joinToString("")
+        6, 8 -> hex
+        else -> return null
+    }
+    return runCatching {
+        val v = full.toLong(16)
+        if (full.length == 8) Color((v ushr 8 or (v shl 24)).toInt())
+        else Color(0xFF000000L.or(v).toInt())
+    }.getOrNull()
 }
 
 @Composable

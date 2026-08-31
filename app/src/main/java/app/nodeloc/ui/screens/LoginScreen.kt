@@ -69,13 +69,15 @@ fun LoginScreen(onBack: () -> Unit) {
     var secondFactorToken by rememberSaveable { mutableStateOf<String?>(null) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var authProviders by remember { mutableStateOf<List<AuthProviderDto>>(emptyList()) }
 
-    // 加载第三方登录列表
-    remember {
-        scope.launch {
-            authProviders = runCatching { DiscourseApi.authProviders() }.getOrDefault(emptyList())
-        }
+    // 第三方登录提供商（硬编码，因为 API 端点需要权限）
+    val authProviders = remember {
+        listOf(
+            AuthProviderDto(name = "google_oauth2", prettyName = "Google"),
+            AuthProviderDto(name = "github", prettyName = "GitHub"),
+            AuthProviderDto(name = "twitter", prettyName = "X"),
+            AuthProviderDto(name = "telegram", prettyName = "Telegram"),
+        )
     }
 
     fun submit() {

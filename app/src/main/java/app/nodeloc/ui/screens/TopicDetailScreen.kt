@@ -858,10 +858,8 @@ private fun PostItem(
                             }
                             Spacer(Modifier.width(14.dp))
                         }
-                        ReactionButton(post, canReact = canReply, onUpdated = onReactionUpdated)
+                        VoteButton(post, onUpdated = onReactionUpdated)
                         if (canReply) {
-                            Spacer(Modifier.width(22.dp))
-                            VoteButton(post, onUpdated = onReactionUpdated)
                             Spacer(Modifier.width(22.dp))
                             IconButton(onClick = { onReply(post.username, post.postNumber) }, modifier = Modifier.size(20.dp)) {
                                 Icon(Icons.AutoMirrored.Filled.Reply, "回复", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
@@ -978,10 +976,10 @@ private fun VoteButton(post: PostDto, onUpdated: (PostDto) -> Unit) {
 
     // 从 actionsSummary 中查找投票分数
     // Discourse vote 插件通常使用 id=100+ 的 action 来表示投票
-    // 这里我们假设投票分数存储在某个特定的 action 中
-    // 如果没有找到，默认显示 0
+    // 帖子本身算作1票，所以初始分数为1
     val voteScore = remember(post.actionsSummary) {
-        post.actionsSummary.find { it.id >= 100 }?.count ?: 0
+        val score = post.actionsSummary.find { it.id >= 100 }?.count ?: 0
+        if (score == 0) 1 else score
     }
 
     fun vote(direction: String) {

@@ -5,6 +5,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.*
@@ -859,6 +861,8 @@ private fun PostItem(
                         ReactionButton(post, canReact = canReply, onUpdated = onReactionUpdated)
                         if (canReply) {
                             Spacer(Modifier.width(22.dp))
+                            VoteButton(post, onUpdated = onReactionUpdated)
+                            Spacer(Modifier.width(22.dp))
                             IconButton(onClick = { onReply(post.username, post.postNumber) }, modifier = Modifier.size(20.dp)) {
                                 Icon(Icons.AutoMirrored.Filled.Reply, "回复", tint = nc.onSurfaceVariant, modifier = Modifier.size(16.dp))
                             }
@@ -954,6 +958,183 @@ private fun RewardBubbleRow(rewards: List<app.nodeloc.data.model.RewardDto>, mod
                 Spacer(Modifier.width(2.dp))
                 Icon(Icons.Filled.Bolt, null, tint = nc.onSurfaceVariant, modifier = Modifier.size(13.dp))
             }
+        }
+    }
+}
+
+/**
+ * 投票按钮：向上箭头 + 分数 + 向下箭头
+ * 短按直接投票，长按显示表情标签菜单
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun VoteButton(post: PostDto, onUpdated: (PostDto) -> Unit) {
+    val nc = LocalNodelocColors.current
+    val scope = rememberCoroutineScope()
+    var voting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showUpMenu by remember { mutableStateOf(false) }
+    var showDownMenu by remember { mutableStateOf(false) }
+
+    // 从 actionsSummary 中查找投票分数
+    // Discourse vote 插件通常使用 id=100+ 的 action 来表示投票
+    // 这里我们假设投票分数存储在某个特定的 action 中
+    // 如果没有找到，默认显示 0
+    val voteScore = remember(post.actionsSummary) {
+        post.actionsSummary.find { it.id >= 100 }?.count ?: 0
+    }
+
+    fun vote(direction: String) {
+        if (voting) return
+        voting = true
+        error = null
+        scope.launch {
+            runCatching { DiscourseApi.votePost(post.id, direction) }
+                .onSuccess {
+                    // 投票成功后，乐观更新本地分数
+                    val delta = if (direction == "up") 1 else -1
+                    val updatedActions = post.actionsSummary.map {
+                        if (it.id >= 100) it.copy(count = it.count + delta) else it
+                    }
+                    onUpdated(post.copy(actionsSummary = updatedActions))
+                }
+                .onFailure { error = it.message }
+            voting = false
+        }
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        // 向上投票按钮（短按直接投票，长按显示正面表情菜单）
+        Box {
+            IconButton(
+                onClick = { vote("up") },
+                enabled = !voting,
+                modifier = Modifier
+                    .size(20.dp)
+                    .combinedClickable(
+                        onClick = { vote("up") },
+                        onLongClick = { showUpMenu = true },
+                        enabled = !voting
+                    )
+            ) {
+                Icon(
+                    Icons.Filled.KeyboardArrowUp,
+                    contentDescription = "赞",
+                    tint = nc.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            if (showUpMenu) {
+                VoteEmojiMenu(
+                    isPositive = true,
+                    onDismiss = { showUpMenu = false },
+                    onSelect = { emoji ->
+                        showUpMenu = false
+                        vote("up")
+                    }
+                )
+            }
+        }
+
+        // 投票分数
+        Text(
+            text = voteScore.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            color = nc.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+
+        // 向下投票按钮（短按直接投票，长按显示负面表情菜单）
+        Box {
+            IconButton(
+                onClick = { vote("down") },
+                enabled = !voting,
+                modifier = Modifier
+                    .size(20.dp)
+                    .combinedClickable(
+                        onClick = { vote("down") },
+                        onLongClick = { showDownMenu = true },
+                        enabled = !voting
+                    )
+            ) {
+                Icon(
+                    Icons.Filled.KeyboardArrowDown,
+                    contentDescription = "踩",
+                    tint = nc.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            if (showDownMenu) {
+                VoteEmojiMenu(
+                    isPositive = false,
+                    onDismiss = { showDownMenu = false },
+                    onSelect = { emoji ->
+                        showDownMenu = false
+                        vote("down")
+                    }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 投票表情标签菜单
+ * @param isPositive true 表示正面表情（顶），false 表示负面表情（踩）
+ */
+@Composable
+private fun VoteEmojiMenu(
+    isPositive: Boolean,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit
+) {
+    val nc = LocalNodelocColors.current
+
+    // 正面表情标签
+    val positiveEmojis = listOf(
+        "👍" to "有用",
+        "👏" to "赞同",
+        "💯" to "精彩",
+        "🔥" to "火",
+        "❤️" to "喜欢",
+        "😄" to "开心"
+    )
+
+    // 负面表情标签
+    val negativeEmojis = listOf(
+        "👎" to "无用",
+        "😕" to "反对",
+        "😂" to "搞笑",
+        "😱" to "震惊",
+        "🤔" to "疑问",
+        "😴" to "无聊"
+    )
+
+    val emojis = if (isPositive) positiveEmojis else negativeEmojis
+
+    DropdownMenu(
+        expanded = true,
+        onDismissRequest = onDismiss,
+        modifier = Modifier.background(nc.surface)
+    ) {
+        emojis.forEach { (emoji, label) ->
+            DropdownMenuItem(
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(emoji, style = MaterialTheme.typography.titleMedium)
+                        Text(label, style = MaterialTheme.typography.bodyMedium, color = nc.onSurface)
+                    }
+                },
+                onClick = { onSelect(emoji) }
+            )
         }
     }
 }

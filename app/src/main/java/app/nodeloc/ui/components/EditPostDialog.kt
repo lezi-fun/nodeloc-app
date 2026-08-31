@@ -57,6 +57,7 @@ fun EditPostDialog(post: PostDto, onDismiss: () -> Unit, onEdited: (PostDto) -> 
     var gifSheetOpen by remember(post.id) { mutableStateOf(false) }
     var emojiSheetOpen by remember(post.id) { mutableStateOf(false) }
     var previewMode by remember(post.id) { mutableStateOf(false) }
+    var previewHtml by remember(post.id) { mutableStateOf("") }
     var uploading by remember(post.id) { mutableStateOf(false) }
     var saving by remember(post.id) { mutableStateOf(false) }
     var loading by remember(post.id) { mutableStateOf(post.raw == null) }
@@ -122,7 +123,19 @@ fun EditPostDialog(post: PostDto, onDismiss: () -> Unit, onEdited: (PostDto) -> 
                         MarkdownAction.Gif -> gifSheetOpen = true
                         MarkdownAction.Emoji -> emojiSheetOpen = true
                         MarkdownAction.Attachment -> filePicker.launch("*/*")
-                        MarkdownAction.TogglePreview -> previewMode = !previewMode
+                        MarkdownAction.TogglePreview -> {
+                            if (!previewMode) {
+                                errorMsg = null
+                                scope.launch {
+                                    runCatching { DiscourseApi.previewPost(body.text) }
+                                        .onSuccess { previewHtml = it.cooked; previewMode = true }
+                                        .onFailure { errorMsg = it.message ?: "预览失败，请稍后再试" }
+                                }
+                            } else {
+                                previewMode = false
+                                errorMsg = null
+                            }
+                        }
                         else -> body = MarkdownEditingActions.apply(action, body)
                     }
                 },
@@ -133,7 +146,7 @@ fun EditPostDialog(post: PostDto, onDismiss: () -> Unit, onEdited: (PostDto) -> 
             errorMsg?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
             if (previewMode) {
-                CookedText(body.text, Modifier.fillMaxSize().padding(16.dp))
+                CookedText(previewHtml, Modifier.fillMaxSize().padding(16.dp))
             } else {
                 OutlinedTextField(
                     value = body,

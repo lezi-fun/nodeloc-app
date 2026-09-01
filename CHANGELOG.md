@@ -1,5 +1,99 @@
 # NodeLoc App 更新日志
 
+## v0.3.3 (2026-09-01)
+
+本版以修复为主。相当一部分工作是回头对照 Discourse 官方源码（`discourse/discourse`
+的 `frontend/discourse-markdown-it`、`app/lib/composer/toolbar.ts`、
+`common/base/onebox.scss` 等）逐项核对，纠正之前凭猜实现、与官网不一致的地方。
+
+### 🐛 问题修复
+
+- **Markdown 预览彻底修好**
+  - 根因：`POST /posts/preview.json` 在 Discourse 上并不存在，任何内容都返回 404
+    （"找不到请求的 URL 或资源。"）。官网 composer 的预览本来就是浏览器里
+    markdown-it 客户端渲染，没有服务端预览端点
+  - 改为本地渲染：CommonMark + GFM 表格 / 删除线 / 自动链接扩展，产出的 HTML
+    交给 `CookedText`，与帖子正文共用同一套排版
+  - 创建话题、楼层回复、编辑帖子三处预览统一切到本地渲染
+  - 渲染细节对齐 `discourse-markdown-it/src/setup.js`：单换行渲染成 `<br>`
+    （官网 `breaks: !traditional_markdown_linebreaks`，本站未开该设置）、
+    `html: true` 不转义正文 HTML、`:emoji:` 图片属性照 `features/emoji.js`
+    与站点实际 cooked 对齐（`emoji_set` 是 `unicode` 而非 `twitter`）
+
+- **第三方登录改为应用内完成**
+  - 原实现走不通：用 CustomTabs 跳外部浏览器、靠 `nodeloc://auth` 回跳，但
+    Discourse 的 `redirect_uri` 注册在提供商侧（实测 `/auth/github` 带的是
+    站点自己的 `/auth/github/callback`），自定义 scheme 永远不触发；
+    兑换调用打的 `/session/current_user_confirm_session` 实测 404
+  - 新增应用内 WebView 授权：打开 `/auth/{provider}` → 用户在提供商页面授权 →
+    检测到从提供商跳回站点域即取会话 cookie 并关闭 WebView →
+    同步进 OkHttp 的 CookieJar，再经 `/session/current.json` 确认登录态
+  - 判定以"离开过站点再跳回"为条件，不依赖 callback 路径拼写；站点域按主机名
+    比对，避免 `www` / 尾斜杠差异。拿不到长期登录 cookie 时保持 WebView 打开，
+    首次登录可在站内补完注册表单
+  - 登录页正常显示第三方登录入口（Google、GitHub、X、Telegram）
+
+- **onebox 链接卡片对齐官网的内 / 外链两种形态**
+  - 外链卡片：标题链接改取 `h3 > a`（原先取第一个 `<a>`，实际拿到的是
+    `header.source` 里的域名链接）；来源域名取 `header.source`；
+    缩略图按 `.aspect-image` 的 `--aspect-ratio` 铺满宽度，无该包裹时还原成
+    官网的左浮动小图（`max-width: 35%`、`max-height: 170px`）
+  - 删掉误加的左侧强调色竖线 —— `onebox-shadow` mixin 是 `border: 0` 加
+    1px 描边与 4px 浅色外圈，`border-left` 只在 onebox 被引用块包住时出现
+  - 站内话题引用：新增独立渲染，24px 头像 + 话题链接 + 分类徽章 +
+    blockquote 摘要，徽章颜色解析官网内联的 `--category-badge-color`；
+    补上属于它的 `border-left`（5px 中性灰），标题与正文共用同一块底色
+
+- **投票功能修正**：投票按钮替代点赞按钮而非并存；帖子本身算 1 票，初始分数为 1；
+  顶 / 踩箭头改用官网 `arrow-big-up` / `arrow-big-down` 的原始 SVG 路径构造，
+  不再用 Material Icons 的细箭头
+- **表情**：工具栏表情按钮原用带头发的 `Icons.Filled.Face`，官网是
+  `far-face-smile`（只有圆圈轮廓加眼睛和嘴），已更换；选择面板去掉 chip 的
+  边框与填充背景，改成官网的裸图网格，单元格尺寸按 `emoji-picker.scss` 取值
+  （图片 24dp、单元格 36dp）
+- 修复多个帖子渲染问题：Markdown 图片语法 `![alt](url)` 的渲染、小程序改为
+  可点击卡片并在独立 Activity 打开、`<details>` 标签导致的崩溃
+- 修复点赞图标样式：改用 Material Icons 的中空 / 实心心形，与官网行为一致
+- 修复点赞后回复按钮暂时消失：用 `key(post.id, canReply)` 稳定重组期间的按钮状态
+- 修复话题界面登录提示闪烁：登录态在检查完成前为未知状态，不再从"登录后回复"
+  跳变成回复框
+- 修复搜索类型选择：补上用户与分类搜索结果的显示，排序选项只在话题 / 帖子搜索时出现
+
+### ✨ 新增功能
+
+- **编辑器工具栏对齐官网 composer 的菜单结构**
+  - 分组顺序按官网 `fontStyles → insertions → extras` 排列
+  - 标题与列表改为弹出菜单：标题 6 项（标题 1-4 / 正文 / 小号文字）、
+    列表 3 项（无序 / 有序 / 任务清单）
+  - 新增 `+` 菜单：代码块、插入表格、应用 wrap
+  - 代码按官网 `if (!this.capabilities.touch)` 的做法从触屏主栏移出
+- **Markdown / 预览切换改成官网的分段开关**：复刻 composer 工具栏最左侧的
+  `ComposerToggleSwitch`，灰底滑轨上一块浅色滑块，左格是 Font Awesome 的
+  markdown 标记、右格是字母 A；尺寸照 `composer-toggle-switch.scss` 取值
+- **帖子投票**：顶 / 踩 API 与界面
+- **发私信**：用户资料页新增入口与撰写对话框
+- **复制 Markdown**：帖子更多菜单新增
+- **退出登录**：设置界面新增
+- 编辑帖子时自动预填充原内容
+- 回复后局部插入新楼层，不再整页刷新，避免页面跳动
+
+### 🔧 优化改进
+
+- 新增依赖：CommonMark 及 GFM 表格 / 删除线 / 自动链接扩展（本地 Markdown 渲染）
+- 清理已失效的代码：`previewPost` 与 `PostPreviewDto`、`nodeloc://auth` deeplink、
+  `AuthCallbackHandler`、`loginWithPayload`
+- 删除临时测试脚本与 README 中过时的功能列表
+
+### ⚠️ 已知限制
+
+- 本地 Markdown 渲染不认 Discourse 自有的 bbcode（`[quote]`、`[details]`、
+  `[wrap]` 等）与 onebox，预览里这些会显示为原文；发布后由服务端正常渲染
+- `:emoji:` 简码没有内置 emoji 名单，打错的简码在预览里会显示为裂图
+  （官网未命中时保留原文）
+- 第三方登录的收尾（跳回站点域后取 cookie）需真实账号授权才能走通，尚未实测
+
+---
+
 ## v0.3.2 (2024-XX-XX)
 
 ### ✨ 新增功能

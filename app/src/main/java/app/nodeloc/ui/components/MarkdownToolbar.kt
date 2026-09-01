@@ -17,7 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.outlined.SentimentSatisfiedAlt
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.FormatListBulleted
@@ -108,7 +108,7 @@ fun MarkdownToolbar(onAction: (MarkdownAction) -> Unit, modifier: Modifier = Mod
                 onAction = onAction,
             )
         }
-        ToolbarButton(Icons.Filled.Face, "表情") { onAction(MarkdownAction.Emoji) }
+        ToolbarButton(Icons.Outlined.SentimentSatisfiedAlt, "表情") { onAction(MarkdownAction.Emoji) }
         ToolbarButton(Icons.Filled.AttachFile, "上传") { onAction(MarkdownAction.Attachment) }
         ToolbarButton(Icons.Filled.Gif, "插入 GIF") { onAction(MarkdownAction.Gif) }
         ToolbarButton(Icons.Filled.Visibility, "预览") { onAction(MarkdownAction.TogglePreview) }

@@ -147,6 +147,20 @@ object MarkdownEditing {
     }
 
     /**
+     * 插入 GFM 表格骨架,对齐官网 + 菜单的"插入表格"。
+     * 光标落在第一个表头单元格上,方便直接改写。
+     */
+    fun insertTable(value: TextFieldValue): TextFieldValue {
+        val header = "列 1"
+        val skeleton = "\n|$header | 列 2 |\n|--- | --- |\n| | |\n"
+        val cursor = value.selection.max
+        val newText = value.text.substring(0, cursor) + skeleton + value.text.substring(cursor)
+        // 选中第一个表头单元格的占位文字
+        val selStart = cursor + 2
+        return TextFieldValue(newText, TextRange(selStart, selStart + header.length))
+    }
+
+    /**
      * 代码:无选中且当前行空白 → 插入代码块占位并选中;单行有选中 → 行内反引号包裹/去包裹;
      * 选中内容跨行 → 整体包成三个反引号代码块。
      */

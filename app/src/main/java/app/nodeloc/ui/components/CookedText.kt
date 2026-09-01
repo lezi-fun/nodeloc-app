@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -546,8 +547,16 @@ private fun DetailsBlock(
  *     </article>
  *   </aside>
  *
- * 官网视觉要点:左侧一条 3px 的强调色竖线、header 用小字显示来源域名、
- * 缩略图按 --aspect-ratio 铺满卡片宽度(不是小方图)、描述最多 2 行。
+ * 视觉规格来自 common/base/onebox.scss:
+ *   aside.onebox { @include onebox-shadow(4px); padding: 1em; background: var(--secondary) }
+ *   @mixin onebox-shadow($t) { border: 0;
+ *     box-shadow: 0 0 0 1px var(--onebox-border-color), 0 0 0 $t var(--onebox-shadow-color) }
+ * 即 1px 描边 + 4px 浅色外圈,**没有左侧竖线**(border-left 只出现在
+ * `blockquote { aside.onebox { … } }`,也就是被引用块包住时)。
+ *
+ * 缩略图有两种形态,取决于 cooked 里有没有 .aspect-image 包裹:
+ *   有 → [style*="--aspect-ratio"] > img 是 absolute + width/height 100%,按比例铺满宽度
+ *   无 → .onebox-body img 是 float:left; max-width:35%(窄屏); max-height:170px,文字排在右侧
  */
 @Composable
 private fun OneboxBlock(node: Element, onOpenUrl: (String) -> Unit) {
@@ -567,66 +576,107 @@ private fun OneboxBlock(node: Element, onOpenUrl: (String) -> Unit) {
         ?: body.selectFirst("h3, h4, .title")?.text()?.trim()?.takeIf { it.isNotBlank() }
         ?: source
     val description = body.selectFirst("p")?.text()?.trim()?.takeIf { it.isNotBlank() }
-    // .aspect-image 的 --aspect-ratio 决定缩略图比例,官网按此铺满宽度
-    val thumb = body.selectFirst("img.thumbnail[src], .aspect-image img[src], img[src]")
+    val aspectWrapper = body.selectFirst("[style*=--aspect-ratio]")
+    val thumb = aspectWrapper?.selectFirst("img[src]")
+        ?: body.selectFirst("img.thumbnail[src], img[src]")
     val thumbUrl = thumb?.let { resolveUrl(it.attr("src")) }
-    val aspect = thumb?.let { img ->
+    // 有 .aspect-image 包裹才铺满宽度;比例优先用 wrapper 的 --aspect-ratio,退回 img 的 width/height
+    val fullWidthThumb = aspectWrapper != null
+    val aspect = aspectRatioOf(aspectWrapper?.attr("style")) ?: thumb?.let { img ->
         val w = img.attr("width").toFloatOrNull()
         val h = img.attr("height").toFloatOrNull()
         if (w != null && h != null && h > 0f) w / h else null
-    } ?: aspectRatioOf(body.selectFirst(".aspect-image")?.attr("style"))
+    }
+    // 被引用块包住时官网才加左侧竖线(--d-post-aside-border-left: 5px solid var(--primary-300))
+    val insideQuote = node.closest("blockquote, aside.quote") != null
 
-    Surface(
-        onClick = { onOpenUrl(href) },
-        shape = RoundedCornerShape(8.dp),
-        color = nc.surface,
-        border = BorderStroke(1.dp, nc.outlineVariant),
-        modifier = Modifier.fillMaxWidth(),
+    // 外圈:对应 box-shadow 的 4px --onebox-shadow-color(primary-100)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(nc.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+            .padding(4.dp),
     ) {
-        Row(Modifier.fillMaxWidth()) {
-            // 官网 .onebox 的左侧强调竖线
-            Box(Modifier.width(3.dp).fillMaxHeight().background(nc.primary))
-            Column(Modifier.weight(1f).padding(12.dp)) {
-                Text(
-                    source,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = nc.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (thumbUrl != null) {
-                    Spacer(Modifier.height(8.dp))
-                    AsyncImage(
-                        model = thumbUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(aspect ?: (16f / 9f))
-                            .clip(RoundedCornerShape(4.dp)),
-                    )
+        Surface(
+            onClick = { onOpenUrl(href) },
+            shape = RoundedCornerShape(6.dp),
+            color = nc.surface,
+            border = BorderStroke(1.dp, nc.outlineVariant),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(Modifier.fillMaxWidth()) {
+                if (insideQuote) {
+                    Box(Modifier.width(5.dp).fillMaxHeight().background(nc.outlineVariant))
                 }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = nc.primary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (description != null) {
-                    Spacer(Modifier.height(4.dp))
+                Column(Modifier.weight(1f).padding(14.dp)) {
                     Text(
-                        description,
-                        style = MaterialTheme.typography.bodySmall,
+                        source,
+                        style = MaterialTheme.typography.labelSmall,
                         color = nc.onSurfaceVariant,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    // header { margin-bottom: 1em }
+                    Spacer(Modifier.height(14.dp))
+                    if (thumbUrl != null && fullWidthThumb) {
+                        AsyncImage(
+                            model = thumbUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(aspect ?: (16f / 9f))
+                                .clip(RoundedCornerShape(4.dp)),
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        OneboxText(title, description)
+                    } else if (thumbUrl != null) {
+                        // float:left 的小图:Compose 里用 Row 近似(文字不会绕到图片下方)
+                        Row(Modifier.fillMaxWidth()) {
+                            AsyncImage(
+                                model = thumbUrl,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth(0.35f)
+                                    .heightIn(max = 170.dp)
+                                    .aspectRatio(aspect ?: 1f)
+                                    .clip(RoundedCornerShape(4.dp)),
+                            )
+                            // img { margin-right: 1em }
+                            Spacer(Modifier.width(14.dp))
+                            Column(Modifier.weight(1f)) { OneboxText(title, description) }
+                        }
+                    } else {
+                        OneboxText(title, description)
+                    }
                 }
             }
         }
+    }
+}
+
+/** h3 { font-size: var(--font-up-1); margin-bottom: 10px; a { color: var(--tertiary) } } + 描述段 */
+@Composable
+private fun OneboxText(title: String, description: String?) {
+    val nc = MaterialTheme.colorScheme
+    Text(
+        title,
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Bold,
+        color = nc.primary,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+    )
+    if (description != null) {
+        Spacer(Modifier.height(10.dp))
+        Text(
+            description,
+            style = MaterialTheme.typography.bodySmall,
+            color = nc.onSurface,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -712,8 +762,16 @@ private fun QuoteBlock(node: Element, topicReferer: String?, onPreview: (String)
  *     <blockquote>摘要…</blockquote>
  *   </aside>
  *
- * 与外链 onebox 的差别:标题行带 24px 头像,分类徽章用 --category-badge-color 上色,
- * 正文是 blockquote 摘要。整卡可点,跳到被引用的话题。
+ * 视觉规格来自 common/base/topic-post.scss 的 aside.quote:
+ *   .title { display:flex; align-items:start; gap:var(--space-2);
+ *            padding: 0.8em 0.8em 0 0.8em;              // 注意下内边距是 0
+ *            background: var(--d-post-aside-background);
+ *            border-left: var(--d-post-aside-border-left) }
+ *   blockquote { margin-top: 0; padding: 0.75em }
+ * 其中 common/base/discourse.scss 定义:
+ *   --d-post-aside-background: var(--blend-primary-secondary-5)   // 极浅的底色
+ *   --d-post-aside-border-left: 5px solid var(--primary-300)      // 5px 中性灰,不是强调色
+ * 标题与正文共用同一块底色,中间没有分隔线。
  */
 @Composable
 private fun InternalTopicQuote(
@@ -733,22 +791,20 @@ private fun InternalTopicQuote(
         ?: badge?.text()?.trim()
     val badgeColor = cssVarColor(badge?.attr("style"), "--category-badge-color")
     val badgeTextColor = cssVarColor(badge?.attr("style"), "--category-badge-text-color")
+    // --d-post-aside-background 是 primary 混入 secondary 5%,整块(标题+正文)共用
+    val asideBg = nc.onSurface.copy(alpha = 0.05f)
 
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = nc.surface,
-        border = BorderStroke(1.dp, nc.outlineVariant),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.fillMaxWidth()) {
-            // 标题行:官网 .title 有独立的浅色底并与正文用细线分隔
+    Row(Modifier.fillMaxWidth().background(asideBg)) {
+        // --d-post-aside-border-left: 5px solid var(--primary-300)
+        Box(Modifier.width(5.dp).fillMaxHeight().background(nc.outlineVariant))
+        Column(Modifier.weight(1f)) {
+            // .title { padding: 0.8em 0.8em 0 0.8em } —— 没有下内边距,也没有分隔线
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(nc.surfaceVariant.copy(alpha = 0.5f))
                     .then(if (href != null) Modifier.clickable { onOpenUrl(href) } else Modifier)
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(start = 12.dp, end = 12.dp, top = 12.dp),
+                verticalAlignment = Alignment.Top,
             ) {
                 if (avatar != null) {
                     AsyncImage(
@@ -764,14 +820,14 @@ private fun InternalTopicQuote(
                         title,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        color = nc.onSurface,
+                        color = nc.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
                 }
                 if (!badgeName.isNullOrBlank()) {
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(8.dp))
                     Box(
                         Modifier
                             .background(badgeColor ?: nc.secondaryContainer, RoundedCornerShape(2.dp))
@@ -786,8 +842,8 @@ private fun InternalTopicQuote(
                     }
                 }
             }
-            HorizontalDividerThin()
-            Column(Modifier.fillMaxWidth().padding(10.dp)) {
+            // blockquote { margin-top: 0; padding: 0.75em }
+            Column(Modifier.fillMaxWidth().padding(12.dp)) {
                 node.childNodes().forEach { child ->
                     if (child is Element && child.hasClass("title")) return@forEach
                     RenderBlock(child, topicReferer, onPreview, onOpenUrl)
@@ -795,16 +851,6 @@ private fun InternalTopicQuote(
             }
         }
     }
-}
-
-@Composable
-private fun HorizontalDividerThin() {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant),
-    )
 }
 
 /** 解析官网内联 style 里的 CSS 变量颜色,如 --category-badge-color: #F7941D */

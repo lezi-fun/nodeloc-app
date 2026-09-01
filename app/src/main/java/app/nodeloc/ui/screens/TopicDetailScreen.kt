@@ -589,6 +589,7 @@ fun TopicDetailScreen(
                                 else -> replyField = MarkdownEditingActions.apply(action, replyField)
                             }
                         },
+                        previewMode = previewMode,
                     )
                     if (uploading) {
                         Text("正在上传…", style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant,

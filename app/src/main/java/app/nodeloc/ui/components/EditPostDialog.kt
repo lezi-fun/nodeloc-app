@@ -132,10 +132,8 @@ fun EditPostDialog(post: PostDto, onDismiss: () -> Unit, onEdited: (PostDto) -> 
                         else -> body = MarkdownEditingActions.apply(action, body)
                     }
                 },
+                previewMode = previewMode,
             )
-            Text(if (previewMode) "A · 渲染预览" else "M · Markdown",
-                style = MaterialTheme.typography.labelSmall, color = nc.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
             errorMsg?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
             if (previewMode) {

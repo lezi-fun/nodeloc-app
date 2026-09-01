@@ -26,13 +26,13 @@ import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Gif
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextRange
@@ -64,14 +64,30 @@ enum class MarkdownAction {
  * code 在触屏端不进主栏(官网 `if (!this.capabilities.touch)`),改由 + 菜单的
  * 代码块提供。+ 菜单其余项取官网 popupMenuOptions 里与排版相关的部分。
  */
+/**
+ * @param previewMode 当前是否在渲染视图,决定最左侧切换开关的滑块位置
+ */
 @Composable
-fun MarkdownToolbar(onAction: (MarkdownAction) -> Unit, modifier: Modifier = Modifier) {
+fun MarkdownToolbar(
+    onAction: (MarkdownAction) -> Unit,
+    previewMode: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
     val nc = LocalNodelocColors.current
     var headingMenu by remember { mutableStateOf(false) }
     var listMenu by remember { mutableStateOf(false) }
     var optionsMenu by remember { mutableStateOf(false) }
 
-    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 2.dp)) {
+    Row(
+        modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // 官网把这个开关放在工具栏最左侧,在所有按钮之前(d-editor.gjs 的 ToggleSwitch)
+        ComposerToggleSwitch(
+            preview = previewMode,
+            onToggle = { onAction(MarkdownAction.TogglePreview) },
+            modifier = Modifier.padding(end = 6.dp),
+        )
         // fontStyles
         ToolbarButton(Icons.Filled.FormatBold, "粗体") { onAction(MarkdownAction.Bold) }
         ToolbarButton(Icons.Filled.FormatItalic, "斜体") { onAction(MarkdownAction.Italic) }
@@ -111,7 +127,6 @@ fun MarkdownToolbar(onAction: (MarkdownAction) -> Unit, modifier: Modifier = Mod
         ToolbarButton(Icons.Outlined.SentimentSatisfiedAlt, "表情") { onAction(MarkdownAction.Emoji) }
         ToolbarButton(Icons.Filled.AttachFile, "上传") { onAction(MarkdownAction.Attachment) }
         ToolbarButton(Icons.Filled.Gif, "插入 GIF") { onAction(MarkdownAction.Gif) }
-        ToolbarButton(Icons.Filled.Visibility, "预览") { onAction(MarkdownAction.TogglePreview) }
         Box {
             ToolbarButton(Icons.Filled.AddCircleOutline, "选项") { optionsMenu = true }
             ToolbarDropdown(

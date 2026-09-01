@@ -198,12 +198,7 @@ fun CreateTopicScreen(onBack: () -> Unit, onCreated: (Long) -> Unit) {
                     else -> body = MarkdownEditingActions.apply(action, body)
                 }
             },
-        )
-        Text(
-            if (previewMode) "A · 渲染预览" else "M · Markdown",
-            style = MaterialTheme.typography.labelSmall,
-            color = nc.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            previewMode = previewMode,
         )
 
         errorMsg?.let { msg ->

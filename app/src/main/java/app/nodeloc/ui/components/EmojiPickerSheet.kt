@@ -1,5 +1,10 @@
 package app.nodeloc.ui.components
 
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -10,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -32,9 +36,16 @@ import app.nodeloc.util.absoluteUrl
 import coil.compose.AsyncImage
 
 
+/** 官网 emoji picker 的单元格与图片尺寸(图片 ~28px,单元格留一点点击余量) */
+private val EmojiCellSize = 40.dp
+private val EmojiImageSize = 28.dp
+
 /**
  * 与官网 emoji-picker 一致优先展示站点自定义 emoji。选择自定义 emoji 时插入 :name:，
  * 由 Discourse 服务端在预览/发布时转换为对应图片，而不是把图片文件名写进正文。
+ *
+ * 版式对齐官网:分区标题 + 裸图网格。官网的 emoji 单元格是纯图片按钮
+ * (.emoji-picker__section 用 grid 排布),没有 chip 的边框与填充背景。
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -83,27 +94,35 @@ fun EmojiPickerSheet(onDismiss: () -> Unit, onPick: (String) -> Unit) {
             } else {
                 filteredByGroup.forEach { (prefix, emojis) ->
                     val displayName = groupDisplayNames[prefix] ?: prefix.uppercase()
+                    // 官网 .emoji-picker__section-title:小号、次要色、字距略宽
                     Text(
                         displayName,
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 6.dp),
                     )
+                    // 官网 emoji picker 是裸图网格(.emoji-picker__section 用 grid),
+                    // 单元格只有 hover/按压反馈,没有 chip 那样的边框和填充背景
                     FlowRow(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         emojis.forEach { emoji ->
-                            AssistChip(
-                                onClick = { onPick(":${emoji.name}:") },
-                                label = {
-                                    AsyncImage(
-                                        model = absoluteUrl(emoji.url, DiscourseApi.BASE),
-                                        contentDescription = emoji.name,
-                                        modifier = Modifier.size(28.dp),
-                                    )
-                                },
-                            )
+                            Box(
+                                Modifier
+                                    .size(EmojiCellSize)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable { onPick(":${emoji.name}:") },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                AsyncImage(
+                                    model = absoluteUrl(emoji.url, DiscourseApi.BASE),
+                                    contentDescription = emoji.name,
+                                    modifier = Modifier.size(EmojiImageSize),
+                                )
+                            }
                         }
                     }
                 }

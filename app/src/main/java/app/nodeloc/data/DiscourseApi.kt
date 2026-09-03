@@ -195,8 +195,14 @@ object DiscourseApi {
             fun send(csrf: String): Pair<Int, String?> {
                 val req = Request.Builder()
                     .url(BASE + path)
+                    .header("Accept", "application/json")
                     .header("X-Requested-With", "XMLHttpRequest")
                     .header("X-CSRF-Token", csrf)
+                    // Discourse 的 CSRF 防护除了 token 还会校验 Origin / Referer,
+                    // 少了这两个头写请求会被判成无效请求(签到就栽在这里)
+                    .header("Origin", BASE)
+                    .header("Referer", "$BASE/")
+                    .header("Discourse-Present", "true")
                     .build(csrf)
                     .build()
                 return client.newCall(req).execute().use { resp -> resp.code to resp.body?.string() }
@@ -268,23 +274,24 @@ object DiscourseApi {
         }
     }
 
-    /** NodeLoc discourse-checkin 插件:nonce 在客户端生成,服务端只校验本次请求一致性。 */
+    /**
+     * NodeLoc discourse-checkin 插件。
+     *
+     * nonce 是去掉连字符的单个 UUID —— 正好 32 位十六进制。原实现拼了两个 UUID 再截成
+     * 26 位,长度不对,服务端判为无效请求。头部除了插件自己的 X-Discourse-Checkin /
+     * X-Checkin-Nonce,还要带 Accept-Language(其余 Origin / Referer / Discourse-Present
+     * 由 writeRequest 统一加)。
+     */
     suspend fun checkIn(): CheckinResponseDto {
-        val nonce = buildString {
-            repeat(2) {
-                append(java.util.UUID.randomUUID().toString().replace("-", ""))
-            }
-        }.take(26)
-        // 使用表单编码，与官网一致
+        val nonce = java.util.UUID.randomUUID().toString().replace("-", "")
         val form = FormBody.Builder()
             .add("nonce", nonce)
             .add("timestamp", System.currentTimeMillis().toString())
             .build()
         val (code, body) = writeRequest("/checkin") {
-            header("Discourse-Logged-In", "true")
-                .header("Discourse-Present", "true")
-                .header("X-Discourse-Checkin", "true")
+            header("X-Discourse-Checkin", "true")
                 .header("X-Checkin-Nonce", nonce)
+                .header("Accept-Language", "zh-CN")
                 .post(form)
         }
         if (code !in 200..299 || body == null) throw httpError(code, body)

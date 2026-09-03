@@ -69,6 +69,16 @@ object AppUpdateManager {
     private val client = OkHttpClient()
 
     /**
+     * 正式版本号的形状:v1、v1.2、v1.2.3 都算。
+     *
+     * CI 对每次提交都会发一个 `build-<短哈希>` 的 Release,这类 tag 不是版本号。
+     * 原实现直接拿 tag 去比:`"build-f411917".split(".")` → `toIntOrNull() ?: 0` → `[0]`,
+     * 与 `[0,3,2]` 比较时在第二段判定为更旧,于是静默地不提示 —— 即使正式版已发布。
+     * 这里显式过滤,只认版本号形状的 tag。
+     */
+    private val versionTag = Regex("""^v?\d+(\.\d+)*$""")
+
+    /**
      * 检查 GitHub Release 更新
      * @param currentVersionName 当前应用版本号（如 "1.0.0"）
      */
@@ -91,8 +101,14 @@ object AppUpdateManager {
                 val body = response.body?.string() ?: return@launch
                 val release = json.decodeFromString<GitHubRelease>(body)
 
+                // 只认版本号形状的 tag;build-<hash> 这类自动构建直接跳过
+                if (!versionTag.matches(release.tag_name.trim())) {
+                    Log.w(TAG, "Latest release tag is not a version: ${release.tag_name}")
+                    return@launch
+                }
+
                 // 提取版本号（去掉 'v' 前缀）
-                val latestVersion = release.tag_name.removePrefix("v")
+                val latestVersion = release.tag_name.trim().removePrefix("v")
 
                 // 查找 universal APK
                 val universalApk = release.assets.find { asset ->

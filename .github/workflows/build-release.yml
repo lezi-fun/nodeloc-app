@@ -27,7 +27,10 @@ jobs:
         id: sha
         run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      # 手动触发且填写了版本号时,APK/tag/Release 均以版本号命名
+      # 手动触发且填写了版本号时,APK/tag/Release 均以版本号命名。
+      # 提交触发的自动构建发为 pre-release —— GitHub 的 /releases/latest 只返回
+      # 最新的非 pre-release、非草稿 Release,否则每次提交都会把正式版本从 latest 顶掉,
+      # 应用内的更新检查就再也看不到正式版。
       - name: Resolve release naming
         id: rel
         run: |
@@ -36,9 +39,11 @@ jobs:
           if [ -n "$version" ]; then
             echo "name=$version" >> "$GITHUB_OUTPUT"
             echo "tag=$version" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
           else
             echo "name=$short" >> "$GITHUB_OUTPUT"
             echo "tag=build-$short" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Detect Android project (skip until scaffold lands)
@@ -91,9 +96,19 @@ jobs:
         run: |
           TAG="${{ steps.rel.outputs.tag }}"
           NAME="${{ steps.rel.outputs.name }}"
+          if [ "${{ steps.rel.outputs.prerelease }}" = "true" ]; then
+            FLAGS="--prerelease"
+          else
+            FLAGS="--latest"
+          fi
           gh release create "$TAG" \
             --title "$NAME" \
             --notes "自动构建 · commit ${{ github.sha }}" \
             --target "${{ github.sha }}" \
+            $FLAGS \
             dist/*.apk \
-          || gh release upload "$TAG" dist/*.apk --clobber
+          || {
+            # Release 已存在:补传资产,并把 pre-release 标记纠正过来
+            gh release upload "$TAG" dist/*.apk --clobber
+            gh release edit "$TAG" $FLAGS
+          }

@@ -84,7 +84,8 @@ private val EmojiSize = 20.dp
 
 private sealed interface ParagraphPart {
     data class Inline(val element: Element) : ParagraphPart
-    data class Image(val element: Element) : ParagraphPart
+    /** [fullUrl] 为 lightbox 的原图地址,点击放大时优先使用 */
+    data class Image(val element: Element, val fullUrl: String? = null) : ParagraphPart
 }
 
 /** Discourse cooked HTML → Compose 富文本，按网页规则区分系统 emoji、自定义表情与正文图片。 */
@@ -95,7 +96,15 @@ fun CookedText(
     topicReferer: String? = null,
 ) {
     val context = LocalContext.current
-    val body = remember(html) { Jsoup.parseBodyFragment(html, DiscourseApi.BASE).body() }
+    val body = remember(html) {
+        Jsoup.parseBodyFragment(html, DiscourseApi.BASE).body().also { root ->
+            // lightbox 的 .meta(文件名 / 尺寸 / 体积)在官网触屏端是整块隐藏的:
+            // common/base/lightbox.scss 里 .meta 本身 opacity: 0,且 .filename、
+            // .informations、图标在 @media (pointer: coarse) 下都是 display: none。
+            // 不摘掉它就会被当成正文文字渲染成"缩略图旁边的一行链接"。
+            root.select(".lightbox-wrapper .meta, a.lightbox .meta").remove()
+        }
+    }
     var previewUrl by remember { mutableStateOf<String?>(null) }
     var pendingExternalUrl by remember { mutableStateOf<String?>(null) }
     fun launchUrl(url: String) {
@@ -157,8 +166,19 @@ private fun RenderBlock(
             // 真实界面由 /apps/installs/{id}/webview 这个自包含页面提供
             node.hasClass("discourse-app-embed") -> AppEmbedBlock(node, topicReferer)
             node.hasClass("onebox") || node.hasClass("onebox-body") -> OneboxBlock(node, onOpenUrl)
+            // Discourse 给正文大图套的是 <div class="lightbox-wrapper"><a class="lightbox" href="原图">
+            // <img src="缩略图" width height></a></div>。这是块级大图,必须整块交给 ContentImage,
+            // 否则会落到 InlineFlow 里被当成行内 emoji 尺寸的小图。
+            node.lightboxImage() != null -> {
+                val img = node.lightboxImage()!!
+                ContentImage(img, onPreview, fullUrl = node.lightboxHref())
+            }
             else -> when (node.tagName().lowercase()) {
-                "p" -> Paragraph(node, topicReferer, onPreview, onOpenUrl)
+                // <div> 不能嵌在 <p> 里,HTML 解析器会把 lightbox-wrapper 提到段落外,
+                // 于是原地留下一对空 <p>。空段落不渲染,避免多出两段 spacedBy 间距。
+                "p" -> if (node.childNodeSize() > 0 || node.text().isNotBlank()) {
+                    Paragraph(node, topicReferer, onPreview, onOpenUrl)
+                }
                 "img" -> if (node.isEmoji()) InlineFlow(Element("span").appendChild(node.clone()), onOpenUrl) else ContentImage(node, onPreview)
                 "a" -> node.nonEmojiImage()?.let { ContentImage(it, onPreview) } ?: LinkBlock(node, onOpenUrl)
                 "blockquote", "aside" -> QuoteBlock(node, topicReferer, onPreview, onOpenUrl)
@@ -206,17 +226,22 @@ private fun Paragraph(
                 inline = Element("span")
             }
             element.childNodes().forEach { child ->
-                val image = when (child) {
+                val part = when (child) {
                     is Element -> when {
-                        child.tagName().equals("img", true) && !child.isEmoji() -> child
-                        child.tagName().equals("a", true) -> child.imageForDisplay()
+                        // 段落里的 lightbox 大图:div.lightbox-wrapper / a.lightbox
+                        child.lightboxImage() != null ->
+                            ParagraphPart.Image(child.lightboxImage()!!, child.lightboxHref())
+                        child.tagName().equals("img", true) && !child.isEmoji() ->
+                            ParagraphPart.Image(child)
+                        child.tagName().equals("a", true) ->
+                            child.imageForDisplay()?.let { ParagraphPart.Image(it, child.lightboxHref()) }
                         else -> null
                     }
                     else -> null
                 }
-                if (image != null) {
+                if (part != null) {
                     flushInline()
-                    add(ParagraphPart.Image(image))
+                    add(part)
                 } else {
                     inline.appendChild(child.clone())
                 }
@@ -228,7 +253,7 @@ private fun Paragraph(
         parts.forEach { part ->
             when (part) {
                 is ParagraphPart.Inline -> InlineFlow(part.element, onOpenUrl)
-                is ParagraphPart.Image -> ContentImage(part.element, onPreview)
+                is ParagraphPart.Image -> ContentImage(part.element, onPreview, part.fullUrl)
             }
         }
     }
@@ -375,8 +400,12 @@ private fun InlineFlow(element: Element, onOpenUrl: (String) -> Unit) {
     )
 }
 
+/**
+ * @param fullUrl 原图地址(lightbox 的 a[href]),点击放大时优先用它;
+ *                展示仍用 img 的 src(服务端已生成的优化尺寸)
+ */
 @Composable
-private fun ContentImage(node: Element, onPreview: (String) -> Unit) {
+private fun ContentImage(node: Element, onPreview: (String) -> Unit, fullUrl: String? = null) {
     val url = resolveUrl(node.attr("src")) ?: return
     val declaredWidth = node.attr("width").toFloatOrNull()?.takeIf { it > 0f }
     val declaredHeight = node.attr("height").toFloatOrNull()?.takeIf { it > 0f }
@@ -391,7 +420,7 @@ private fun ContentImage(node: Element, onPreview: (String) -> Unit) {
                 .then(if (ratio != null) Modifier.aspectRatio(ratio) else Modifier.wrapContentHeight())
                 .clip(RoundedCornerShape(8.dp))
                 // 与官网 lightbox 一致:点击在应用内放大查看,而非打开外部浏览器
-                .clickable { onPreview(url) },
+                .clickable { onPreview(fullUrl ?: url) },
             contentScale = ContentScale.Fit,
         )
     }
@@ -887,6 +916,24 @@ private fun CodeBlock(node: Element) {
 }
 
 private fun Element.isEmoji(): Boolean = hasClass("emoji")
+
+/**
+ * 该节点是否是 Discourse 的 lightbox 大图包装,返回其中的 img。
+ * 命中 `div.lightbox-wrapper`、`a.lightbox`,以及只包着一张非表情图的裸 `a`。
+ */
+private fun Element.lightboxImage(): Element? {
+    val isWrapper = hasClass("lightbox-wrapper") ||
+        (tagName().equals("a", true) && hasClass("lightbox"))
+    if (!isWrapper) return null
+    return selectFirst("img[src]")?.takeUnless { it.isEmoji() }
+}
+
+/** lightbox 的原图地址:优先 data-download-href,其次 a[href] */
+private fun Element.lightboxHref(): String? {
+    val anchor = if (tagName().equals("a", true)) this else selectFirst("a.lightbox[href], a[href]")
+    val raw = anchor?.attr("href")?.takeIf { it.isNotBlank() } ?: return null
+    return resolveUrl(raw)
+}
 
 private fun Element.imageForDisplay(): Element? {
     // 返回链接中的图片元素，无论是否有额外文本

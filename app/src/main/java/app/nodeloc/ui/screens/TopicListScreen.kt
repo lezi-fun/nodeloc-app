@@ -2,6 +2,7 @@ package app.nodeloc.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,10 +23,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -83,6 +85,8 @@ fun TopicListScreen(
     onOpenSearch: () -> Unit = {},
     onOpenLogin: () -> Unit = {},
     onOpenCreateTopic: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
+    onOpenNotificationTopic: (Long) -> Unit = {},
 ) {
     val nc = LocalNodelocColors.current
     val scope = rememberCoroutineScope()
@@ -204,6 +208,8 @@ fun TopicListScreen(
             onOpenDrawer = onOpenDrawer,
             onOpenSearch = onOpenSearch,
             onOpenLogin = onOpenLogin,
+            onOpenNotifications = onOpenNotifications,
+            onOpenNotificationTopic = onOpenNotificationTopic,
             checkinLoading = checkinLoading,
             checkinDone = checkinDone,
             onCheckin = ::checkIn,
@@ -323,12 +329,15 @@ private fun OfficialTopBar(
     onOpenDrawer: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenLogin: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    onOpenNotificationTopic: (Long) -> Unit,
     checkinLoading: Boolean,
     checkinDone: Boolean,
     onCheckin: () -> Unit,
 ) {
     val nc = LocalNodelocColors.current
     val me = SessionRepo.currentUser.collectAsState().value
+    var userMenuOpen by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().height(56.dp).background(nc.headerBg).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -362,12 +371,38 @@ private fun OfficialTopBar(
             Icon(Icons.Filled.Search, contentDescription = "搜索", tint = nc.onSurfaceVariant)
         }
         if (me != null) {
-            IconButton(onClick = {}) {
-                Icon(Icons.Filled.Notifications, contentDescription = "通知", tint = nc.onSurfaceVariant)
-            }
             Spacer(Modifier.width(2.dp))
-            Avatar(name = me.username, url = SiteRepo.avatarUrl(me.avatarTemplate, 48), size = 28.dp)
-            Spacer(Modifier.width(4.dp))
+            Box {
+                BadgedBox(
+                    badge = {
+                        if (me.unreadNotifications > 0) {
+                            Badge {
+                                Text(
+                                    if (me.unreadNotifications > 99) "99+" else me.unreadNotifications.toString(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                        }
+                    },
+                ) {
+                    Box(
+                        modifier = Modifier.size(40.dp).clickable { userMenuOpen = !userMenuOpen },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Avatar(
+                            name = me.username,
+                            url = SiteRepo.avatarUrl(me.avatarTemplate, 48),
+                            size = 32.dp,
+                        )
+                    }
+                }
+                UserNotificationsMenu(
+                    expanded = userMenuOpen,
+                    onDismissRequest = { userMenuOpen = false },
+                    onViewAll = onOpenNotifications,
+                    onOpenTopic = onOpenNotificationTopic,
+                )
+            }
         } else {
             Spacer(Modifier.width(4.dp))
             Surface(

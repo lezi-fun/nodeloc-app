@@ -1,28 +1,40 @@
 package app.nodeloc.ui
 
+import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import app.nodeloc.data.AppUpdateManager
-import app.nodeloc.data.ProvideMessageBus
+import app.nodeloc.data.DiscourseApi
 import app.nodeloc.data.SessionRepo
+import app.nodeloc.data.ProvideMessageBus
 import app.nodeloc.data.model.TopicDto
 import app.nodeloc.ui.components.AppUpdateDialog
 import app.nodeloc.ui.components.NodeLocDrawer
 import app.nodeloc.ui.screens.CreateTopicScreen
 import app.nodeloc.ui.screens.LoginScreen
+import app.nodeloc.ui.screens.NotificationsScreen
 import app.nodeloc.ui.screens.SearchScreen
 import app.nodeloc.ui.screens.SettingsScreen
 import app.nodeloc.ui.screens.TopicDetailScreen
 import app.nodeloc.ui.screens.TopicListScreen
 import app.nodeloc.ui.screens.UserProfileScreen
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -31,38 +43,73 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 @Composable
-fun AppRoot() {
+fun AppRoot(
+    openNotifications: Boolean = false,
+    onNotificationsOpened: () -> Unit = {},
+) {
     ProvideMessageBus {
-        AppRootContent()
+        AppRootContent(openNotifications, onNotificationsOpened)
     }
 }
 
 @Composable
-private fun AppRootContent() {
+private fun AppRootContent(
+    openNotifications: Boolean,
+    onNotificationsOpened: () -> Unit,
+) {
     var detailJson by rememberSaveable { mutableStateOf<String?>(null) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var loginOpen by rememberSaveable { mutableStateOf(false) }
     var createTopicOpen by rememberSaveable { mutableStateOf(false) }
     var profileUsername by rememberSaveable { mutableStateOf<String?>(null) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    var notificationsOpen by rememberSaveable { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val me = SessionRepo.currentUser.collectAsState().value
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {}
+
+    LaunchedEffect(me?.id) {
+        if (
+            me != null &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    LaunchedEffect(openNotifications) {
+        if (openNotifications) {
+            notificationsOpen = true
+            onNotificationsOpened()
+        }
+    }
 
     BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
-    BackHandler(enabled = profileUsername != null && !drawerState.isOpen) { profileUsername = null }
-    BackHandler(enabled = detailJson != null && profileUsername == null && !drawerState.isOpen) { detailJson = null }
+    BackHandler(enabled = profileUsername != null && !notificationsOpen && !drawerState.isOpen) { profileUsername = null }
     BackHandler(
-        enabled = searchOpen && detailJson == null && profileUsername == null && !drawerState.isOpen,
+        enabled = notificationsOpen && !drawerState.isOpen,
+    ) { notificationsOpen = false }
+    BackHandler(
+        enabled = detailJson != null && !notificationsOpen && profileUsername == null && !drawerState.isOpen,
+    ) { detailJson = null }
+    BackHandler(
+        enabled = searchOpen && !notificationsOpen && detailJson == null && profileUsername == null && !drawerState.isOpen,
     ) { searchOpen = false }
     BackHandler(
-        enabled = loginOpen && detailJson == null && !searchOpen && profileUsername == null && !drawerState.isOpen,
+        enabled = loginOpen && !notificationsOpen && detailJson == null && !searchOpen &&
+            profileUsername == null && !drawerState.isOpen,
     ) { loginOpen = false }
     BackHandler(
-        enabled = createTopicOpen && detailJson == null && !searchOpen && !loginOpen &&
+        enabled = createTopicOpen && !notificationsOpen && detailJson == null && !searchOpen && !loginOpen &&
             profileUsername == null && !drawerState.isOpen,
     ) { createTopicOpen = false }
     BackHandler(
-        enabled = settingsOpen && detailJson == null && !searchOpen && !loginOpen &&
+        enabled = settingsOpen && !notificationsOpen && detailJson == null && !searchOpen && !loginOpen &&
             !createTopicOpen && profileUsername == null && !drawerState.isOpen,
     ) { settingsOpen = false }
 
@@ -76,11 +123,25 @@ private fun AppRootContent() {
                 onOpenTopicId = { id -> detailJson = DetailArgs(id, "", 0, false).toJson() },
                 onOpenProfile = { username -> profileUsername = username },
                 onOpenSettings = { settingsOpen = true },
+                onOpenChat = {
+                    context.startActivity(
+                        Intent(context, app.nodeloc.MiniAppActivity::class.java)
+                            .putExtra("url", "${DiscourseApi.BASE}/chat")
+                            .putExtra("name", "聊天"),
+                    )
+                },
             )
         },
     ) {
         val d = detailJson?.let { runCatching { DetailArgs.fromJson(it) }.getOrNull() }
         when {
+            notificationsOpen -> NotificationsScreen(
+                onBack = { notificationsOpen = false },
+                onOpenTopic = { topicId ->
+                    notificationsOpen = false
+                    detailJson = DetailArgs(topicId, "", 0, false).toJson()
+                },
+            )
             settingsOpen -> SettingsScreen(
                 onBack = { settingsOpen = false },
                 onLogout = {
@@ -120,6 +181,10 @@ private fun AppRootContent() {
                 onOpenTopic = { t: TopicDto -> detailJson = DetailArgs.of(t).toJson() },
                 onOpenLogin = { loginOpen = true },
                 onOpenCreateTopic = { createTopicOpen = true },
+                onOpenNotifications = { notificationsOpen = true },
+                onOpenNotificationTopic = { topicId ->
+                    detailJson = DetailArgs(topicId, "", 0, false).toJson()
+                },
             )
         }
     }

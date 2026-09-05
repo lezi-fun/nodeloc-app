@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -64,7 +65,14 @@ private val topicIdInUrl = Regex("""/t/[^/]+/(\d+)""")
  * 没有自定义标签时回退到站点默认(有图标的节点 / 站点热门标签)。
  */
 @Composable
-fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopicId: (Long) -> Unit = {}, onOpenProfile: (String) -> Unit = {}, onOpenSettings: () -> Unit = {}) {
+fun NodeLocDrawer(
+    onClose: () -> Unit,
+    onOpenLogin: () -> Unit = {},
+    onOpenTopicId: (Long) -> Unit = {},
+    onOpenProfile: (String) -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    onOpenChat: () -> Unit = {},
+) {
     val nc = LocalNodelocColors.current
     // svg 解码由全局 ImageLoader(NodelocApp)提供
     var nodes by remember { mutableStateOf<List<CategoryDto>>(emptyList()) }
@@ -179,6 +187,10 @@ fun NodeLocDrawer(onClose: () -> Unit, onOpenLogin: () -> Unit = {}, onOpenTopic
                 ),
             )
             DrawerEntry("更多", Icons.Filled.MoreVert, onClose)
+            DrawerEntry("聊天", Icons.AutoMirrored.Filled.Chat) {
+                onClose()
+                onOpenChat()
+            }
             HorizontalDivider(Modifier.padding(vertical = 10.dp), color = nc.outlineVariant)
 
             DrawerSectionTitle("资源")

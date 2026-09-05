@@ -13,6 +13,7 @@ object SessionStore {
     private const val KEY_USER = "current_user_json"
     private const val KEY_CHECKIN_DATE = "checkin_date"
     private const val KEY_CHECKIN_USER = "checkin_user"
+    private const val KEY_NOTIFICATION_LAST_ID = "notification_last_id"
 
     private lateinit var prefs: SharedPreferences
 
@@ -71,10 +72,25 @@ object SessionStore {
     fun isCheckedIn(userId: Int, date: String): Boolean =
         ::prefs.isInitialized && prefs.getInt(KEY_CHECKIN_USER, -1) == userId && prefs.getString(KEY_CHECKIN_DATE, null) == date
 
+    /** 最近一次已经投递到系统通知栏的站点通知 ID。 */
+    fun lastNotifiedNotificationId(): Long =
+        if (::prefs.isInitialized) prefs.getLong(KEY_NOTIFICATION_LAST_ID, -1L) else -1L
+
+    fun markNotificationNotified(id: Long) {
+        if (!::prefs.isInitialized) return
+        prefs.edit().putLong(KEY_NOTIFICATION_LAST_ID, id).apply()
+    }
+
     fun clear() {
         sessionCookie = null
         csrfToken = null
         if (!::prefs.isInitialized) return
-        prefs.edit().remove(KEY_T).remove(KEY_USER).remove(KEY_CHECKIN_DATE).remove(KEY_CHECKIN_USER).apply()
+        prefs.edit()
+            .remove(KEY_T)
+            .remove(KEY_USER)
+            .remove(KEY_CHECKIN_DATE)
+            .remove(KEY_CHECKIN_USER)
+            .remove(KEY_NOTIFICATION_LAST_ID)
+            .apply()
     }
 }

@@ -3,6 +3,7 @@ package app.nodeloc
 import android.app.Application
 import android.os.Build
 import app.nodeloc.data.GithubReleaseChecker
+import app.nodeloc.data.NotificationSync
 import app.nodeloc.data.SessionRepo
 import coil.ImageLoader
 import coil.ImageLoaderFactory
@@ -20,8 +21,13 @@ import kotlinx.coroutines.launch
 class NodelocApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
+        NotificationSync.createChannel(this)
         SessionRepo.init(this)
-        CoroutineScope(Dispatchers.IO).launch { SessionRepo.refresh() }
+        NotificationSync.schedulePeriodic(this)
+        CoroutineScope(Dispatchers.IO).launch {
+            SessionRepo.refresh()
+            NotificationSync.check(this@NodelocApp)
+        }
         CoroutineScope(Dispatchers.IO).launch { GithubReleaseChecker.check() }
     }
 

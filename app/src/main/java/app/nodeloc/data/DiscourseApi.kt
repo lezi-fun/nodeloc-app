@@ -17,6 +17,7 @@ import app.nodeloc.data.model.LotteryDto
 import app.nodeloc.data.model.NestedChildrenDto
 import app.nodeloc.data.model.NestedTopicDto
 import app.nodeloc.data.model.NestedTopicPageDto
+import app.nodeloc.data.model.NotificationsResponseDto
 import app.nodeloc.data.model.PostDto
 import app.nodeloc.data.model.PostCookedDto
 import app.nodeloc.data.model.PostEditResponseDto
@@ -272,6 +273,30 @@ object DiscourseApi {
             if (!resp.isSuccessful || body == null) throw httpError(resp.code, body)
             json.decodeFromString(CurrentSessionDto.serializer(), body).currentUser
         }
+    }
+
+    /** 获取当前用户完整通知列表。未登录时由服务端返回未授权错误。 */
+    suspend fun notifications(): NotificationsResponseDto = get("/notifications.json")
+
+    /** 与 Discourse 头像用户菜单一致，只取近期通知。 */
+    suspend fun recentNotifications(limit: Int = 30): NotificationsResponseDto {
+        val safeLimit = limit.coerceIn(1, 60)
+        return get(
+            "/notifications.json?recent=true&limit=$safeLimit&bump_last_seen_reviewable=true",
+        )
+    }
+
+    /** 只将一条通知标记为已读。 */
+    suspend fun markNotificationRead(id: Long) {
+        val form = FormBody.Builder().add("id", id.toString()).build()
+        val (code, body) = putForm("/notifications/mark-read", form)
+        if (code !in 200..299) throw httpError(code, body)
+    }
+
+    /** 将当前用户的通知全部标记为已读。 */
+    suspend fun markNotificationsRead() {
+        val (code, body) = putForm("/notifications/mark-read")
+        if (code !in 200..299) throw httpError(code, body)
     }
 
     /**

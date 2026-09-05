@@ -651,3 +651,44 @@ data class UserActionDto(
     @SerialName("post_number") val postNumber: Int = 0,
     @SerialName("category_id") val categoryId: Int = 0,
 )
+
+/** GET /notifications 响应。字段取自 app/serializers/notification_serializer.rb */
+@Serializable
+data class NotificationsResponseDto(
+    val notifications: List<NotificationDto> = emptyList(),
+    @SerialName("total_rows_notifications") val totalRows: Int = 0,
+    @SerialName("seen_notification_id") val seenNotificationId: Long = 0,
+    @SerialName("load_more_notifications") val loadMoreUrl: String? = null,
+)
+
+/**
+ * 一条通知。notification_type 是 site.json 的 notification_types 枚举
+ * (1=mentioned 2=replied 5=liked 6=private_message 12=granted_badge …)。
+ * 展示所需的用户名、话题标题都藏在 data 里,见 lib/notification-types/base.js。
+ */
+@Serializable
+data class NotificationDto(
+    val id: Long = 0,
+    @SerialName("notification_type") val notificationType: Int = 0,
+    val read: Boolean = false,
+    @SerialName("high_priority") val highPriority: Boolean = false,
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("post_number") val postNumber: Int? = null,
+    @SerialName("topic_id") val topicId: Long? = null,
+    @SerialName("fancy_title") val fancyTitle: String? = null,
+    val slug: String? = null,
+    @SerialName("acting_user_avatar_template") val actingUserAvatarTemplate: String? = null,
+    @SerialName("acting_user_name") val actingUserName: String? = null,
+    val data: NotificationDataDto = NotificationDataDto(),
+)
+
+@Serializable
+data class NotificationDataDto(
+    @SerialName("topic_title") val topicTitle: String? = null,
+    @SerialName("display_username") val displayUsername: String? = null,
+    @SerialName("original_username") val originalUsername: String? = null,
+    @SerialName("badge_name") val badgeName: String? = null,
+    @SerialName("group_name") val groupName: String? = null,
+    val count: Int? = null,
+    val message: String? = null,
+)

@@ -471,15 +471,18 @@ object DiscourseApi {
 
     suspend fun setPostWiki(postId: Long, wiki: Boolean) = updatePostField(postId, "wiki", wiki)
 
-    /**
-     * 对帖子进行投票（顶或踩）。
-     * @param postId 帖子 ID
-     * @param direction "up" 表示顶，"down" 表示踩
-     */
-    suspend fun votePost(postId: Long, direction: String) {
+    /** discourse-post-voting:投票或撤回当前用户已有的投票。 */
+    suspend fun votePost(postId: Long, direction: String, remove: Boolean = false) {
         require(direction == "up" || direction == "down") { "direction must be 'up' or 'down'" }
-        val form = FormBody.Builder().add("direction", direction).build()
-        val (code, body) = putForm("/vote/posts/$postId", form)
+        val form = FormBody.Builder()
+            .add("post_id", postId.toString())
+            .apply { if (!remove) add("direction", direction) }
+            .build()
+        val (code, body) = if (remove) {
+            writeRequest("/post_voting/vote") { delete(form) }
+        } else {
+            postForm("/post_voting/vote", form)
+        }
         if (code !in 200..299) throw httpError(code, body)
     }
 

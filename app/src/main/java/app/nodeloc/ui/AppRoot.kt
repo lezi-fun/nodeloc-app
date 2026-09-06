@@ -12,7 +12,6 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
@@ -21,7 +20,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import app.nodeloc.data.AppUpdateManager
 import app.nodeloc.data.DiscourseApi
-import app.nodeloc.data.SessionRepo
 import app.nodeloc.data.ProvideMessageBus
 import app.nodeloc.data.model.TopicDto
 import app.nodeloc.ui.components.AppUpdateDialog
@@ -67,14 +65,12 @@ private fun AppRootContent(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val me = SessionRepo.currentUser.collectAsState().value
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) {}
 
-    LaunchedEffect(me?.id) {
+    LaunchedEffect(Unit) {
         if (
-            me != null &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {

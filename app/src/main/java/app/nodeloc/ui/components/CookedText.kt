@@ -406,7 +406,7 @@ private fun InlineFlow(element: Element, onOpenUrl: (String) -> Unit) {
  */
 @Composable
 private fun ContentImage(node: Element, onPreview: (String) -> Unit, fullUrl: String? = null) {
-    val url = resolveUrl(node.attr("src")) ?: return
+    val url = node.imageSource()?.let(::resolveUrl) ?: return
     val declaredWidth = node.attr("width").toFloatOrNull()?.takeIf { it > 0f }
     val declaredHeight = node.attr("height").toFloatOrNull()?.takeIf { it > 0f }
     val ratio = if (declaredWidth != null && declaredHeight != null) declaredWidth / declaredHeight else null
@@ -605,12 +605,12 @@ private fun OneboxBlock(node: Element, onOpenUrl: (String) -> Unit) {
         ?: body.selectFirst("h3, h4, .title")?.text()?.trim()?.takeIf { it.isNotBlank() }
         ?: source
     val description = body.selectFirst("p")?.text()?.trim()?.takeIf { it.isNotBlank() }
-    val aspectWrapper = body.selectFirst("[style*=--aspect-ratio]")
-    val thumb = aspectWrapper?.selectFirst("img[src]")
-        ?: body.selectFirst("img.thumbnail[src], img[src]")
-    val thumbUrl = thumb?.let { resolveUrl(it.attr("src")) }
-    // 有 .aspect-image 包裹才铺满宽度;比例优先用 wrapper 的 --aspect-ratio,退回 img 的 width/height
-    val fullWidthThumb = aspectWrapper != null
+    val aspectWrapper = body.selectFirst(".aspect-image, .aspect-image-full-size, [style*=--aspect-ratio]")
+    val thumb = aspectWrapper?.selectFirst(IMAGE_SOURCE_SELECTOR)
+        ?: body.selectFirst(IMAGE_SOURCE_SELECTOR)
+    val thumbUrl = thumb?.imageSource()?.let(::resolveUrl)
+    // Discourse 中普通 .aspect-image 是左浮动缩略图,只有 .aspect-image-full-size 才整宽展示
+    val fullWidthThumb = aspectWrapper?.hasClass("aspect-image-full-size") == true
     val aspect = aspectRatioOf(aspectWrapper?.attr("style")) ?: thumb?.let { img ->
         val w = img.attr("width").toFloatOrNull()
         val h = img.attr("height").toFloatOrNull()
@@ -916,6 +916,28 @@ private fun CodeBlock(node: Element) {
 }
 
 private fun Element.isEmoji(): Boolean = hasClass("emoji")
+
+private const val IMAGE_SOURCE_SELECTOR =
+    "img[src], img[data-src], img[data-original-src], img[data-lazy-src], img[srcset], img[data-srcset]"
+
+/** 兼容 cooked HTML 与延迟加载 HTML 中常见的图片地址属性。 */
+private fun Element.imageSource(): String? {
+    for (attribute in listOf("data-src", "data-original-src", "data-lazy-src")) {
+        attr(attribute).trim().takeIf { it.isNotBlank() }?.let { return it }
+    }
+
+    val src = attr("src").trim().takeIf { it.isNotBlank() }
+    if (src != null && !src.startsWith("data:image/")) return src
+
+    for (attribute in listOf("srcset", "data-srcset")) {
+        val candidate = attr(attribute)
+            .split(',')
+            .mapNotNull { entry -> entry.trim().substringBefore(' ').takeIf { it.isNotBlank() } }
+            .lastOrNull()
+        if (candidate != null) return candidate
+    }
+    return src
+}
 
 /**
  * 该节点是否是 Discourse 的 lightbox 大图包装,返回其中的 img。

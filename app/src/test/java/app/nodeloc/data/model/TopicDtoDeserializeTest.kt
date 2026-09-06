@@ -38,4 +38,32 @@ class TopicDtoDeserializeTest {
         val list = json.decodeFromString<TopicListDto>(raw)
         assertEquals(2, list.topics.size)
     }
+
+    @Test
+    fun `deserializes post voting topic and vote state`() {
+        val raw = """
+            {
+              "id": 1,
+              "title": "Voting topic",
+              "is_post_voting": true,
+              "post_stream": {
+                "posts": [{
+                  "id": 10,
+                  "post_voting_vote_count": 3,
+                  "post_voting_user_voted_direction": "up",
+                  "post_voting_has_votes": true
+                }],
+                "stream": [10]
+              }
+            }
+        """.trimIndent()
+
+        val topic = json.decodeFromString<TopicDetailDto>(raw)
+        val post = topic.postStream.posts.single()
+
+        assertEquals(true, topic.isPostVoting)
+        assertEquals(3, post.postVotingVoteCount)
+        assertEquals("up", post.postVotingUserVotedDirection)
+        assertEquals(true, post.postVotingHasVotes)
+    }
 }

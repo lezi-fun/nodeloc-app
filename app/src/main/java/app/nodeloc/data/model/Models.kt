@@ -218,6 +218,7 @@ data class TopicDetailDto(
     @SerialName("posts_count") val postsCount: Int = 0,
     @SerialName("category_id") val categoryId: Int = 0,
     @SerialName("is_nested_view") val isNestedView: Boolean = false,
+    @SerialName("is_post_voting") val isPostVoting: Boolean = false,
     @SerialName("post_stream") val postStream: PostStreamDto = PostStreamDto(),
     @Serializable(with = TagDtoListSerializer::class) val tags: List<TagDto> = emptyList(),
 )
@@ -448,6 +449,10 @@ data class PostDto(
     @SerialName("total_descendant_count") val totalDescendantCount: Int = 0,
     val children: List<PostDto>? = null,
     @SerialName("actions_summary") val actionsSummary: List<ActionSummaryDto> = emptyList(),
+    /** discourse-post-voting:净票数、当前用户投票方向及是否已有投票 */
+    @SerialName("post_voting_vote_count") val postVotingVoteCount: Int = 0,
+    @SerialName("post_voting_user_voted_direction") val postVotingUserVotedDirection: String? = null,
+    @SerialName("post_voting_has_votes") val postVotingHasVotes: Boolean = false,
     /** 以下三项由 Discourse 逐楼层下发,用于展示身份徽章 */
     val admin: Boolean = false,
     val moderator: Boolean = false,
